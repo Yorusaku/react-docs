@@ -35,22 +35,21 @@ export class YjsPostgresqlModule {
                         // 确保只初始化一次客户端
                         Logger.log('🚀 ~ yjs postgresql: ~ options:', options)
                         const isProd = process.env.NODE_ENV === 'production'
+                        const host = process.env.PG_HOST ?? (isProd ? '172.28.49.109' : 'localhost')
+                        const port = Number(process.env.PG_PORT ?? 5432)
+                        const user = process.env.PG_USER ?? 'postgres'
+                        const database = process.env.PG_DATABASE ?? 'postgres'
+                        const password = process.env.PG_PASSWORD ?? 'xiaoer'
                         /**
                          * 妙码学院出品，作者 @Heyi。
                          */
                         const pgdb = await PostgresqlPersistence.build(
                             {
-                                // host: process.env.PG_HOST,
-                                // port: parseInt(process.env.PG_PORT, 10),
-                                // database: process.env.PG_DATABASE,
-                                // user: process.env.PG_USER,
-                                // password: process.env.PG_PASSWORD,
-                                // host: 'localhost',
-                                host: isProd ? '172.28.49.109' : '192.168.31.251',
-                                port: 5432,
-                                user: 'postgres',
-                                database: 'postgres',
-                                password: 'xiaoer',
+                                host,
+                                port,
+                                user,
+                                database,
+                                password,
                             },
                             { tableName: 'yjs-writings', useIndex: false, flushSize: 200 }
                         )

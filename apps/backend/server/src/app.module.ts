@@ -1,7 +1,7 @@
 /*
- *   Copyright (c) 2024 妙码学院 @Heyi
- *   All rights reserved.
- *   妙码学院官方出品，作者 @Heyi，供学员学习使用，可用作练习，可用作美化简历，不可开源。
+ * Copyright (c) 2024 Miaoma Academy @Heyi
+ * All rights reserved.
+ * Internal learning project. Not intended for open-source distribution.
  */
 import { Module } from '@nestjs/common'
 import { ConfigModule, ConfigService } from '@nestjs/config'
@@ -16,9 +16,14 @@ import { DocYjsModule } from './modules/doc-yjs/doc-yjs.module'
 import { PageModule } from './modules/page/page.module'
 import { UserModule } from './modules/user/user.module'
 
+// AppModule is the root composition layer of the backend.
+// It wires config, database, business modules, and collaboration modules together.
 @Module({
     imports: [
+        // Load env-based configuration first.
         ConfigModule.forRoot({ load: [databaseConfig] }),
+
+        // Build the TypeORM connection from ConfigService at runtime.
         TypeOrmModule.forRootAsync({
             imports: [ConfigModule],
             useFactory: (config: ConfigService) => {
@@ -26,12 +31,18 @@ import { UserModule } from './modules/user/user.module'
             },
             inject: [ConfigService],
         }),
+
+        // HTTP auth and user modules.
         AuthModule,
         UserModule,
+
+        // Main business modules.
         ApplicationModule,
         // WSDemoModule,
         DocYjsModule,
         PageModule,
+
+        // Persistence layer for Yjs document updates.
         YjsPostgresqlModule.forRoot(),
     ],
     providers: [],
