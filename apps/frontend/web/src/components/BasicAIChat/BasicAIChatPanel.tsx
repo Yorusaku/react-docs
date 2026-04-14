@@ -1,14 +1,12 @@
-/*
- *   Copyright (c) 2024 妙码学院 @Heyi
- *   All rights reserved.
- *   妙码学院官方出品，作者 @Heyi，供学员学习使用，可用作练习，可用作美化简历，不可开源。
- */
 import { PartialBlock } from '@miaoma-doc/core'
 import { Button } from '@miaoma-doc/shadcn-shared-ui/components/ui/button'
+import { useToast } from '@miaoma-doc/shadcn-shared-ui/hooks/use-toast'
 import { ArrowUp, Loader, Sparkles } from 'lucide-react'
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import TextareaAutosize from 'react-textarea-autosize'
+
+import * as srv from '@/services'
 
 interface BasicAIChatPanelProps {
     onResponse?: (response: PartialBlock[]) => void
@@ -17,48 +15,42 @@ interface BasicAIChatPanelProps {
 export function BasicAIChatPanel(props: BasicAIChatPanelProps) {
     const [keyword, setKeyword] = useState('')
     const [isGenerating, setIsGenerating] = useState(false)
+    const [conversationId, setConversationId] = useState('')
+    const { toast } = useToast()
+
+    const sendMessage = useCallback(async () => {
+        const query = keyword.trim()
+        if (!query || isGenerating) {
+            return
+        }
+
+        setIsGenerating(true)
+        try {
+            const res = await srv.aiChat({
+                query,
+                conversationId,
+            })
+            setConversationId(res.data.conversationId)
+            props.onResponse?.(res.data.blocks)
+            setKeyword('')
+        } catch {
+            toast({
+                variant: 'destructive',
+                title: 'AI generation failed. Please retry.',
+            })
+        } finally {
+            setIsGenerating(false)
+        }
+    }, [conversationId, isGenerating, keyword, props, toast])
 
     const ref = useHotkeys(
         'Enter',
         () => {
-            console.log('send message:', keyword)
-            if (keyword) {
-                setIsGenerating(true)
-
-                fetch('https://api.dify.ai/v1/chat-messages', {
-                    method: 'POST',
-                    headers: {
-                        Authorization: 'Bearer app-7nK3QYaWRVZIk58h8R5Cryge',
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        inputs: {},
-                        query: keyword,
-                        // response_mode: 'streaming',
-                        response_mode: 'blocking',
-                        conversation_id: '',
-                        user: 'abc-123',
-                    }),
-                })
-                    .then(response => response.json())
-                    .then(data => {
-                        const answerData = JSON.parse(data.answer)
-                        console.log('AI response:', answerData)
-                        setIsGenerating(false)
-                        if (props.onResponse) {
-                            props.onResponse(answerData)
-                        }
-                    })
-                    .then(data => {
-                        console.log('AI response:', data)
-                    })
-                    .catch(error => {
-                        console.error('Error:', error)
-                    })
-            }
+            void sendMessage()
         },
         {
             enableOnFormTags: true,
+            preventDefault: true,
         }
     )
 
@@ -71,7 +63,7 @@ export function BasicAIChatPanel(props: BasicAIChatPanelProps) {
                 <TextareaAutosize
                     disabled={isGenerating}
                     ref={ref}
-                    placeholder="请输入你想书写的主题，我来帮你发挥"
+                    placeholder="Describe the topic you want to write about"
                     autoFocus
                     className="flex-1 outline-none px-2 resize-none bg-transparent text-sm items-stretch"
                     value={keyword}
@@ -83,7 +75,7 @@ export function BasicAIChatPanel(props: BasicAIChatPanelProps) {
                     <Loader size={20} color="#6B45FF" className="animate-spin" />
                 </div>
             ) : (
-                <Button size="sm" disabled={!keyword || isGenerating} className="self-end size-6">
+                <Button size="sm" disabled={!keyword.trim() || isGenerating} className="self-end size-6" onClick={() => void sendMessage()}>
                     <ArrowUp />
                 </Button>
             )}

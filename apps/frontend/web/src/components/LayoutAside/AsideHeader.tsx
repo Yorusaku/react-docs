@@ -1,12 +1,12 @@
 import { SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@miaoma-doc/shadcn-shared-ui/components/ui/sidebar'
-import { FileStack, Search, Waypoints } from 'lucide-react'
+import { Bell, FileStack, Search, Trash2, Waypoints } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
 
 export function AsideHeader() {
     return (
         <SidebarHeader>
             <div className="flex h-14 items-center px-4 lg:h-[60px] lg:px-2">
-                <a href="/" className="flex items-center gap-2 ">
+                <a href="/" className="flex items-center gap-2">
                     <img className="w-8" src="/logo.png" />
                     <p className="font-semibold text-lg">妙码协同文档</p>
                 </a>
@@ -14,10 +14,10 @@ export function AsideHeader() {
             <SidebarMenu>
                 <SidebarMenuItem>
                     <SidebarMenuButton asChild>
-                        <a>
+                        <NavLink to="/search">
                             <Search />
                             <span>搜索</span>
-                        </a>
+                        </NavLink>
                     </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
@@ -33,6 +33,22 @@ export function AsideHeader() {
                         <NavLink to="/doc/graph">
                             <Waypoints />
                             <span>文档图谱</span>
+                        </NavLink>
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                    <SidebarMenuButton asChild>
+                        <NavLink to="/notifications">
+                            <Bell />
+                            <span>通知中心</span>
+                        </NavLink>
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                    <SidebarMenuButton asChild>
+                        <NavLink to="/trash">
+                            <Trash2 />
+                            <span>回收站</span>
                         </NavLink>
                     </SidebarMenuButton>
                 </SidebarMenuItem>

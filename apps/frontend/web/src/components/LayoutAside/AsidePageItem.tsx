@@ -46,13 +46,13 @@ export function AsidePageItem(props: AsidePageItemProps) {
                     >
                         <DropdownMenuItem disabled>
                             <StarOff className="text-muted-foreground" />
-                            <span>取消收藏</span>
+                            <span>閸欐牗绉烽弨鎯版</span>
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem asChild>
                             <NavLink to={`/doc/${page.pageId}`} target="_blank">
                                 <ArrowUpRight className="text-muted-foreground" />
-                                <span>新标签打开</span>
+                                <span>閺傜増鐖ｇ粵鐐ⅵ瀵偓</span>
                             </NavLink>
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
@@ -63,7 +63,7 @@ export function AsidePageItem(props: AsidePageItemProps) {
                             }}
                         >
                             <Trash2 />
-                            <span>Delete</span>
+                            <span>鍒犻敓鏂ゆ嫹</span>
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>

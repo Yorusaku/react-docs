@@ -1,14 +1,13 @@
 /*
- *   Copyright (c) 2024 妙码学院 @Heyi
+ *   Copyright (c) 2024 婵℃瑧鐖滅€涳箓娅?@Heyi
  *   All rights reserved.
- *   妙码学院官方出品，作者 @Heyi，供学员学习使用，可用作练习，可用作美化简历，不可开源。
- */
+ *   婵℃瑧鐖滅€涳箓娅岀€规ɑ鏌熼崙鍝勬惂閿涘奔缍旈敓?@Heyi閿涘奔绶电€涳箑鎲崇€涳缚绡勬担璺ㄦ暏閿涘苯褰查悽銊ょ稊缂佸啩绡勯敍灞藉讲閻劋缍旂紘搴″缁犫偓閸樺棴绱濇稉宥呭讲瀵偓濠ф劧鎷? */
 
-import { CurrentUserRes, LoginPayload, LoginRes } from '@/types/api'
+import { CurrentUserRes, LoginPayload, LoginRes, UserListRes } from '@/types/api'
 import { request } from '@/utils/request'
 
 /**
- * 用户登录
+ * 閿熺煫浼欐嫹閿熸枻鎷峰綍
  * @param data
  * @returns
  */
@@ -17,7 +16,7 @@ export const login = async (data: LoginPayload): Promise<LoginRes> => {
 }
 
 /**
- * 获取当前用户信息
+ * 閿熸枻鎷峰彇閿熸枻鎷峰墠閿熺煫浼欐嫹閿熸枻鎷锋伅
  * @returns
  */
 export const currentUser = async (): Promise<CurrentUserRes> => {
@@ -25,7 +24,7 @@ export const currentUser = async (): Promise<CurrentUserRes> => {
 }
 
 /**
- * 用户注册
+ * 閿熺煫浼欐嫹娉ㄩ敓鏂ゆ嫹
  * @param data
  * @returns
  */
@@ -34,9 +33,13 @@ export const register = async (data: { username: string; password: string }) => 
 }
 
 /**
- * 用户退出登录
+ * 閿熺煫浼欐嫹閿熷壙绛规嫹閿熸枻鎷峰綍
  * @returns
  */
 export const logout = async () => {
-    return await request.post('/user/logout')
+    return await request.post('/auth/logout')
+}
+
+export const listUsers = async (): Promise<UserListRes> => {
+    return await request.get('/user/list')
 }

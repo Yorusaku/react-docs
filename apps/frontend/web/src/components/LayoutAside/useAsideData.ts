@@ -11,11 +11,12 @@ import { randomEmoji } from '@/utils/randomEmoji'
 
 export function useAsideData() {
     const navigate = useNavigate()
-    const activePageId = useMatch('/doc/:id')?.params?.id
+    const activeDocPageId = useMatch('/doc/:id')?.params?.id
+    const activeAclPageId = useMatch('/doc/:id/acl')?.params?.id
+    const activePageId = activeDocPageId ?? activeAclPageId
     const { toast } = useToast()
     const { isMobile } = useSidebar()
 
-    // Sidebar 的数据源：文档列表
     const { data: pages = [], refetch: refetchPages } = useQuery<Page[]>({
         queryKey: ['pages'],
         queryFn: async () => {
@@ -23,7 +24,6 @@ export function useAsideData() {
         },
     })
 
-    // 当前登录用户信息，供 Footer 展示
     const { data: currentUser } = useQuery<User>({
         queryKey: ['currentUser'],
         queryFn: async () => {
@@ -35,7 +35,7 @@ export function useAsideData() {
     const handleCreate = async () => {
         const res = await srv.createPage({
             emoji: randomEmoji(),
-            title: '未命名文档@妙码学院-合一',
+            title: 'Untitled Document',
         })
         navigate(`/doc/${res.data.pageId}`)
         await refetchPages()
@@ -45,7 +45,6 @@ export function useAsideData() {
         await srv.removePage(pageId)
         await refetchPages()
 
-        // 如果删的是当前打开文档，回退到列表页，避免落在无效路由
         if (activePageId === pageId) {
             navigate('/doc')
         }
@@ -55,10 +54,30 @@ export function useAsideData() {
         miaoConfetti.firework()
     }
 
-    const handleLogout = () => {
-        toast({ title: '退出登录' })
-        localStorage.removeItem('token')
-        navigate(`/account/login?redirect=${window.location.pathname}`)
+    const handleOpenSettings = () => {
+        toast({
+            title: 'Settings is not available yet',
+            description: 'This entry is reserved for upcoming internal settings.',
+        })
+    }
+
+    const handleOpenAbout = () => {
+        toast({
+            title: 'About Miaoma Docs',
+            description: 'Current build is for internal rollout and validation.',
+        })
+    }
+
+    const handleLogout = async () => {
+        try {
+            await srv.logout()
+        } catch {
+            // stateless jwt logout is best-effort on the client side
+        } finally {
+            toast({ title: 'Logged out' })
+            localStorage.removeItem('token')
+            navigate(`/account/login?redirect=${window.location.pathname}`)
+        }
     }
 
     return {
@@ -69,6 +88,8 @@ export function useAsideData() {
         handleCreate,
         handleDelete,
         handleConfetti,
+        handleOpenSettings,
+        handleOpenAbout,
         handleLogout,
     }
 }

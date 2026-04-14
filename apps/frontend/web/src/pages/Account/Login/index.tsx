@@ -1,9 +1,3 @@
-/*
- *   Copyright (c) 2024 妙码学院 @Heyi
- *   All rights reserved.
- *   妙码学院官方出品，作者 @Heyi，供学员学习使用，可用作练习，可用作美化简历，不可开源。
- */
-
 import { Button } from '@miaoma-doc/shadcn-shared-ui/components/ui/button'
 import { Form, FormControl, FormField, FormItem, FormLabel } from '@miaoma-doc/shadcn-shared-ui/components/ui/form'
 import { Input } from '@miaoma-doc/shadcn-shared-ui/components/ui/input'
@@ -14,35 +8,34 @@ import { useNavigate } from 'react-router-dom'
 
 import * as srv from '@/services'
 import { CreateUserPayload } from '@/types/api'
-import { encrypt } from '@/utils/crypto'
 
 import { TaiJi } from './TaiJi'
 import { World } from './World'
 
 export function Login() {
-    const form = useForm<CreateUserPayload>()
+    const form = useForm<CreateUserPayload>({
+        defaultValues: {
+            username: '',
+            password: '',
+        },
+    })
     const [inputType, setInputType] = useState<'login' | 'register'>('login')
     const navigate = useNavigate()
     const { toast } = useToast()
 
     const handleSubmit = async (values: CreateUserPayload) => {
-        const { password } = values
-        const encryptedPassword = await encrypt(password)
-
-        if (!encryptedPassword) {
-            return
+        const payload = {
+            username: values.username.trim(),
+            password: values.password,
         }
 
         try {
-            const res = await srv[inputType]({
-                ...values,
-                password: encryptedPassword,
-            })
+            const res = await srv[inputType](payload)
 
             if (!res.data) {
                 toast({
                     variant: 'destructive',
-                    title: '请稍后重试',
+                    title: 'Please retry later',
                 })
                 return
             }
@@ -50,7 +43,7 @@ export function Login() {
             if (inputType === 'login') {
                 toast({
                     variant: 'success',
-                    title: '登录成功',
+                    title: 'Login success',
                 })
 
                 localStorage.setItem('token', res.data.access_token)
@@ -61,21 +54,25 @@ export function Login() {
 
             if (inputType === 'register') {
                 toast({
-                    title: '注册成功，请前往登录',
+                    title: 'Registration success, please login',
                 })
                 setInputType('login')
+                form.reset({
+                    username: payload.username,
+                    password: '',
+                })
             }
         } catch {
             toast({
                 variant: 'destructive',
-                title: '登录失败，请稍后重试',
+                title: inputType === 'login' ? 'Login failed, please retry' : 'Registration failed, please retry',
             })
         }
     }
 
     return (
-        <div className="container relative h-screen w-full flex-row items-center justify-end grid max-w-none grid-cols-2  !min-w-[1300px]">
-            <div className="relative h-full flex-col bg-muted p-10 text-white dark:border-r flex">
+        <div className="relative min-h-screen w-full grid grid-cols-1 lg:grid-cols-2 overflow-hidden">
+            <div className="relative hidden lg:flex h-full flex-col bg-muted p-10 text-white dark:border-r">
                 <div className="relative z-20 flex items-center text-lg font-medium">
                     <svg
                         xmlns="http:www.w3.org/2000/svg"
@@ -89,87 +86,88 @@ export function Login() {
                     >
                         <path d="M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3" />
                     </svg>
-                    妙码学院
+                    Miaoma Academy
                 </div>
                 <div className="relative z-20 mt-auto">
                     <blockquote className="space-y-2">
-                        <p className="text-4xl mb-8">&ldquo;落霞与孤鹜齐飞，秋水共长天一色&rdquo;</p>
-                        {/* <p className="text-lg">&ldquo;让进取的人更具职业价值&rdquo;</p> */}
-                        <footer className="text-sm">@合一</footer>
+                        <p className="text-4xl mb-8">“Knowledge compounds when shared.”</p>
+                        <footer className="text-sm">@Heyi</footer>
                     </blockquote>
                 </div>
             </div>
-            <TaiJi />
-            <World yi="yin" />
-            <World yi="yang" />
-            <div className="lg:p-8">
-                <div className="flex items-center justify-center ">
-                    <div className="mx-auto grid w-[350px] gap-6">
-                        <div className="grid gap-2 text-center">
-                            <h1 className="text-3xl font-bold mb-8">妙码协同文档</h1>
-                        </div>
-                        <Form {...form}>
-                            <form onSubmit={form.handleSubmit(handleSubmit)}>
-                                <FormField
-                                    control={form.control}
-                                    rules={{ required: '请输入用户名' }}
-                                    name="username"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>用户名</FormLabel>
-                                            <FormControl>
-                                                <Input {...field} placeholder="请输入用户名" />
-                                            </FormControl>
-                                        </FormItem>
-                                    )}
-                                />
-                                <FormField
-                                    control={form.control}
-                                    name="password"
-                                    rules={{ required: '请输入密码' }}
-                                    render={({ field }) => (
-                                        <FormItem className="mt-2">
-                                            <FormLabel>密码</FormLabel>
-                                            <FormControl>
-                                                <Input {...field} type="password" placeholder="请输入密码" />
-                                            </FormControl>
-                                        </FormItem>
-                                    )}
-                                />
 
-                                <Button type="submit" className="w-full mt-4">
-                                    {inputType == 'login' ? '登录' : '注册'}
-                                </Button>
-                            </form>
-                        </Form>
-                        {inputType === 'login' ? (
-                            <div className="text-center text-sm">
-                                没有账号?{' '}
-                                <Button
-                                    variant="link"
-                                    onClick={() => {
-                                        form.clearErrors()
-                                        setInputType('register')
-                                    }}
-                                >
-                                    注册
-                                </Button>
-                            </div>
-                        ) : (
-                            <div className="text-center text-sm">
-                                已有账号?{' '}
-                                <Button
-                                    variant="link"
-                                    onClick={() => {
-                                        form.clearErrors()
-                                        setInputType('login')
-                                    }}
-                                >
-                                    登录
-                                </Button>
-                            </div>
-                        )}
+            <div className="hidden lg:block">
+                <TaiJi />
+                <World yi="yin" />
+                <World yi="yang" />
+            </div>
+
+            <div className="relative flex items-center justify-center p-6 lg:p-8">
+                <div className="mx-auto grid w-full max-w-[360px] gap-6">
+                    <div className="grid gap-2 text-center">
+                        <h1 className="text-3xl font-bold mb-8">Miaoma Collaborative Docs</h1>
                     </div>
+                    <Form {...form}>
+                        <form onSubmit={form.handleSubmit(handleSubmit)}>
+                            <FormField
+                                control={form.control}
+                                rules={{ required: 'Username is required' }}
+                                name="username"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Username</FormLabel>
+                                        <FormControl>
+                                            <Input {...field} placeholder="Enter username" />
+                                        </FormControl>
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="password"
+                                rules={{ required: 'Password is required' }}
+                                render={({ field }) => (
+                                    <FormItem className="mt-2">
+                                        <FormLabel>Password</FormLabel>
+                                        <FormControl>
+                                            <Input {...field} type="password" placeholder="Enter password" />
+                                        </FormControl>
+                                    </FormItem>
+                                )}
+                            />
+
+                            <Button type="submit" className="w-full mt-4">
+                                {inputType === 'login' ? 'Login' : 'Register'}
+                            </Button>
+                        </form>
+                    </Form>
+                    {inputType === 'login' ? (
+                        <div className="text-center text-sm">
+                            No account?
+                            <Button
+                                variant="link"
+                                onClick={() => {
+                                    form.clearErrors()
+                                    setInputType('register')
+                                }}
+                            >
+                                Register
+                            </Button>
+                        </div>
+                    ) : (
+                        <div className="text-center text-sm">
+                            Already have an account?
+                            <Button
+                                variant="link"
+                                onClick={() => {
+                                    form.clearErrors()
+                                    setInputType('login')
+                                }}
+                            >
+                                Login
+                            </Button>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

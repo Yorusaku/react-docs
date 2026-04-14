@@ -1,16 +1,11 @@
-/*
- *   Copyright (c) 2024 妙码学院 @Heyi
- *   All rights reserved.
- *   妙码学院官方出品，作者 @Heyi，供学员学习使用，可用作练习，可用作美化简历，不可开源。
- */
 import '@miaoma-doc/shadcn/style.css'
 
-// import { PartialBlock } from '@miaoma-doc/core'
+import { Button } from '@miaoma-doc/shadcn-shared-ui/components/ui/button'
 import { Separator } from '@miaoma-doc/shadcn-shared-ui/components/ui/separator'
 import { SidebarInset, SidebarTrigger } from '@miaoma-doc/shadcn-shared-ui/components/ui/sidebar'
 import { useQuery } from '@tanstack/react-query'
-import { useEffect, useMemo, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { ChangeEvent, useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useParams } from 'react-router-dom'
 import { WebsocketProvider } from 'y-websocket'
 import * as Y from 'yjs'
 
@@ -20,29 +15,18 @@ import { debounce } from '@/utils/debounce'
 import { queryClient } from '@/utils/query-client'
 
 import { AvatarList } from './AvatarList'
+import { DocComments } from './DocComments'
 import { DocEditor } from './DocEditor'
-// import { DocEditorDemo } from './DocEditorDemo'
-// import { cursorRender } from './cursorRender'
+import { sanitizeTitleText } from './title-sanitize'
 
-// async function loadFromStorage(pageId: string) {
-//     // Gets the previously stored editor contents.
-//     const storageString = localStorage.getItem('allPages')
-//     if (!storageString) {
-//         return ''
-//     }
-//     const stored = JSON.parse(storageString)
-//     const storedPage = stored[pageId]
-//     if (!storedPage) {
-//         return
-//     }
-//     return storedPage.blocks
-// }
-
-const doc = new Y.Doc()
-// const provider = new WebsocketProvider('ws://localhost:8082', `doc-yjs`, doc)
-const wsHost = import.meta.env.VITE_WS_HOST ?? '192.168.31.251'
+const wsProtocol = import.meta.env.VITE_WS_PROTOCOL ?? (window.location.protocol === 'https:' ? 'wss' : 'ws')
+const wsHost = import.meta.env.VITE_WS_HOST ?? window.location.hostname
 const wsPort = import.meta.env.VITE_WS_PORT ?? '8082'
-const provider = new WebsocketProvider(`ws://${wsHost}:${wsPort}`, `doc-yjs`, doc, { connect: false })
+
+interface YjsInstances {
+    doc: Y.Doc | null
+    provider: WebsocketProvider | null
+}
 
 export const Doc = () => {
     const params = useParams()
@@ -50,78 +34,131 @@ export const Doc = () => {
         queryKey: ['page', params?.id],
         queryFn: async () => {
             if (!params?.id) {
-                return
+                return undefined
             }
             return (await srv.fetchPageDetail(params?.id)).data
         },
         enabled: !!params?.id,
     })
-    // console.log('🚀 ~ Doc ~ pages:', pages)
-    // const page = useMemo(() => {
-    //     return pages?.find(page => page.pageId === params.id)
-    // }, [params?.id, pages])
 
-    // const provider = useRef(new WebsocketProvider('ws://localhost:1314', `miaoma-doc-${page?.id}`, doc)).current
-    const [remoteUsers, setRemoteUsers] = useState<Map<number, { name: string; color: string }>>()
+    const yjsInstancesRef = useRef<YjsInstances>({
+        doc: null,
+        provider: null,
+    })
 
-    const handleTitleInput = useMemo(() => {
-        return debounce((e: React.FormEvent<HTMLDivElement>) => {
-            if (!page) {
+    const [remoteUsers, setRemoteUsers] = useState<Map<number, { name: string; color: string }>>(new Map())
+    const [isReady, setIsReady] = useState(false)
+    const [titleInput, setTitleInput] = useState('')
+
+    useEffect(() => {
+        setTitleInput(page?.title ?? '')
+    }, [page?.title])
+
+    const updateTitleDebounced = useMemo(() => {
+        return debounce((nextTitle: string) => {
+            if (!page?.pageId) {
                 return
             }
-            const title = (e.target as HTMLDivElement).innerText
-            srv.updatePage({
-                pageId: page?.pageId,
+
+            const title = sanitizeTitleText(nextTitle) || 'Untitled Document'
+            void srv.updatePage({
+                pageId: page.pageId,
                 title,
             })
-            queryClient.invalidateQueries({ queryKey: ['pages'] })
+            void queryClient.invalidateQueries({ queryKey: ['pages'] })
+            void queryClient.invalidateQueries({ queryKey: ['page', params?.id] })
+        }, 400)
+    }, [page?.pageId, params?.id])
+
+    const handleTitleChange = (event: ChangeEvent<HTMLInputElement>) => {
+        const value = event.target.value
+        setTitleInput(value)
+        void updateTitleDebounced(value)
+    }
+
+    const handleTitleBlur = () => {
+        if (!page?.pageId) {
+            return
+        }
+
+        const title = sanitizeTitleText(titleInput) || 'Untitled Document'
+        setTitleInput(title)
+        void srv.updatePage({
+            pageId: page.pageId,
+            title,
         })
-    }, [page])
-    /**
-     * 文档初始内容
-     */
-    // const [initialContent, setInitialContent] = useState<PartialBlock[] | 'loading'>('loading')
+        void queryClient.invalidateQueries({ queryKey: ['pages'] })
+        void queryClient.invalidateQueries({ queryKey: ['page', params?.id] })
+    }
 
     useEffect(() => {
-        const changeHandler = () => {
-            const states = provider.awareness.getStates()
-            // console.log('🚀 ~ changeHandler ~ states:', provider.awareness.doc, doc)
-            const users = new Map<number, { name: string; color: string }>()
-            const cursors = new Map<number, { x: number; y: number; windowSize: { width: number; height: number } }>()
-            for (const [key, value] of states) {
-                // 排除自己
-                if (key === provider.awareness.clientID) {
-                    continue
-                }
-                users.set(key, value.user)
-                cursors.set(key, value.cursor)
+        if (yjsInstancesRef.current.provider) {
+            yjsInstancesRef.current.provider.destroy()
+        }
+
+        if (yjsInstancesRef.current.doc) {
+            yjsInstancesRef.current.doc.destroy()
+        }
+
+        setRemoteUsers(new Map())
+        setIsReady(false)
+
+        if (page?.pageId) {
+            const doc = new Y.Doc()
+            const roomName = `miaoma-doc-${page.pageId}`
+            const token = localStorage.getItem('token')
+            const provider = new WebsocketProvider(`${wsProtocol}://${wsHost}:${wsPort}/doc-yjs`, roomName, doc, {
+                connect: false,
+                params: token ? { token } : {},
+            })
+
+            yjsInstancesRef.current = {
+                doc,
+                provider,
             }
-            setRemoteUsers(users)
+
+            const randomColor = () => {
+                return `#${Math.floor(Math.random() * 0xffffff)
+                    .toString(16)
+                    .padStart(6, '0')}`
+            }
+
+            provider.awareness.setLocalStateField('user', {
+                name: `miaoma-${Math.random().toString(36).slice(2)}`,
+                color: randomColor(),
+            })
+
+            const changeHandler = () => {
+                const states = provider.awareness.getStates()
+                const users = new Map<number, { name: string; color: string }>()
+
+                for (const [key, value] of states) {
+                    if (key === provider.awareness.clientID) {
+                        continue
+                    }
+                    if (value?.user?.name && value?.user?.color) {
+                        users.set(key, value.user)
+                    }
+                }
+
+                setRemoteUsers(users)
+            }
+
+            provider.awareness.on('change', changeHandler)
+            provider.connect()
+            setIsReady(true)
+
+            return () => {
+                provider.awareness.off('change', changeHandler)
+                provider.disconnect()
+                provider.destroy()
+                doc.destroy()
+                setIsReady(false)
+            }
         }
-        // @TODO: 这里需要优化，避免频繁更新
-        provider.awareness.on('change', changeHandler)
 
-        return () => {
-            provider.awareness.off('change', changeHandler)
-            provider.disconnect()
-        }
-    }, [provider])
-
-    // 加载缓存的文档内容
-    // useEffect(() => {
-    //     if (!page?.id) {
-    //         return
-    //     }
-    //     loadFromStorage(page.id).then(content => {
-    //         setInitialContent(content)
-    //     })
-    // }, [page?.id])
-
-    useEffect(() => {
-        provider.connect()
-
-        return () => provider.disconnect()
-    }, [])
+        return undefined
+    }, [page?.pageId])
 
     return (
         <SidebarInset>
@@ -137,22 +174,36 @@ export const Doc = () => {
                     </div>
                 </div>
                 <div className="flex flex-row items-center gap-4">
-                    {remoteUsers && <AvatarList remoteUsers={remoteUsers} />}
-                    <SharePopover />
+                    {remoteUsers.size > 0 && <AvatarList remoteUsers={remoteUsers} />}
+                    {page?.pageId && (
+                        <Button asChild size="sm" variant="outline">
+                            <Link to={`/doc/${page.pageId}/acl`}>权限</Link>
+                        </Button>
+                    )}
+                    <SharePopover pageId={page?.pageId} />
                 </div>
             </header>
-            <div className="w-[60%] mx-auto">
-                <h1 className="flex flex-row py-12 px-[54px] leading-[3.25rem] text-4xl font-bold">
+            <div className="w-[90%] lg:w-[60%] mx-auto">
+                <h1 className="flex flex-row py-12 px-4 lg:px-[54px] leading-[3.25rem] text-4xl font-bold">
                     <span className="mr-4">{page?.emoji}</span>
-                    <div
-                        contentEditable
-                        className="inline-block flex-1 outline-none"
-                        onInput={handleTitleInput}
-                        dangerouslySetInnerHTML={{ __html: page?.title ?? '' }}
+                    <input
+                        value={titleInput}
+                        onChange={handleTitleChange}
+                        onBlur={handleTitleBlur}
+                        maxLength={255}
+                        className="inline-block flex-1 outline-none bg-transparent"
+                        placeholder="Untitled Document"
                     />
                 </h1>
-                {page?.id && <DocEditor key={page?.id} pageId={page.pageId} doc={doc} provider={provider} />}
-                {/* <DocEditorDemo /> */}
+                {isReady && page?.pageId && yjsInstancesRef.current.doc && yjsInstancesRef.current.provider && (
+                    <DocEditor
+                        key={page.pageId}
+                        pageId={page.pageId}
+                        doc={yjsInstancesRef.current.doc}
+                        provider={yjsInstancesRef.current.provider}
+                    />
+                )}
+                {page?.pageId && <DocComments pageId={page.pageId} />}
             </div>
         </SidebarInset>
     )

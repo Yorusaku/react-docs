@@ -1,11 +1,10 @@
-/*
- *   Copyright (c) 2024 妙码学院 @Heyi
- *   All rights reserved.
- *   妙码学院官方出品，作者 @Heyi，供学员学习使用，可用作练习，可用作美化简历，不可开源。
- */
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 
 import { Layout } from '@/layout'
+import { DocAclPage } from '@/pages/DocAcl'
+import { NotificationsPage } from '@/pages/Notifications'
+import { SearchPage } from '@/pages/Search'
+import { TrashPage } from '@/pages/Trash'
 import { DocList } from '@/views/Doc'
 import { Doc } from '@/views/Doc/[id]'
 import { DocGraph } from '@/views/Doc/Graph'
@@ -13,10 +12,7 @@ import { Login } from '@/views/Login'
 
 import AuthRoute from './AuthRoute'
 
-// 这里是为了解决 react-router-dom 的类型问题
-
 type PickRouter<T> = T extends (...args: any[]) => infer R ? R : never
-
 type A = typeof createBrowserRouter
 
 export const router: PickRouter<A> = createBrowserRouter([
@@ -37,8 +33,24 @@ export const router: PickRouter<A> = createBrowserRouter([
                 element: <Doc />,
             },
             {
+                path: 'doc/:id/acl',
+                element: <DocAclPage />,
+            },
+            {
                 path: 'doc/graph',
                 element: <DocGraph />,
+            },
+            {
+                path: 'search',
+                element: <SearchPage />,
+            },
+            {
+                path: 'notifications',
+                element: <NotificationsPage />,
+            },
+            {
+                path: 'trash',
+                element: <TrashPage />,
             },
             {
                 path: '/',

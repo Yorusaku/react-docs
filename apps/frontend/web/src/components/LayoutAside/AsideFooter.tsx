@@ -8,11 +8,13 @@ import { User } from '@/types/api'
 interface AsideFooterProps {
     currentUser?: User
     onConfetti: () => void
+    onOpenSettings: () => void
+    onOpenAbout: () => void
     onLogout: () => void
 }
 
 export function AsideFooter(props: AsideFooterProps) {
-    const { currentUser, onConfetti, onLogout } = props
+    const { currentUser, onConfetti, onOpenSettings, onOpenAbout, onLogout } = props
 
     return (
         <SidebarFooter>
@@ -31,28 +33,28 @@ export function AsideFooter(props: AsideFooterProps) {
                                     <AvatarFallback>{currentUser.username}</AvatarFallback>
                                 </Avatar>
                                 <p className="text-left">
-                                    <span className="text-lg">{currentUser.username}！</span>
-                                    庆祝一下 🎉
+                                    <span className="text-lg">{currentUser.username}, </span>
+                                    celebrate a little ??
                                 </p>
                             </>
                         )}
                     </Button>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
-                    <SidebarMenuButton>
+                    <SidebarMenuButton onClick={onOpenSettings}>
                         <Settings />
-                        设置
+                        Settings
                     </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
-                    <SidebarMenuButton>
+                    <SidebarMenuButton onClick={onOpenAbout}>
                         <MessageCircleQuestion />
-                        关于
+                        About
                     </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
                     <Button variant="outline" size="sm" className="w-full mt-1" onClick={onLogout}>
-                        退出登录
+                        Logout
                     </Button>
                 </SidebarMenuItem>
             </SidebarMenu>
