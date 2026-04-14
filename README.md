@@ -243,9 +243,7 @@
 ├─ HTTP /api/** -> NestJS Server -> PostgreSQL(用户/页面/成员/评论/通知/标签/模板/快照/搜索索引等业务表)
 ├─ WS /doc-yjs -> DocYjsGateway(JWT 鉴权) -> y-postgresql(PostgreSQL 协同更新表)
 └─ React Query + Router + Sidebar -> Doc / ACL / Search / Notifications / Trash / Graph 等页面
-
 ScheduleModule -> TasksService -> 搜索索引任务 + 过期快照/回收站数据清理
-
 packages/core -> packages/react -> packages/shadcn -> apps/frontend/web
 packages/shadcn-shared-ui -> packages/shadcn + apps/frontend/web
 apps/frontend/desktop -> 复用 web 产物进行桌面封装

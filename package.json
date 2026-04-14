@@ -24,6 +24,10 @@
         "lint:staged": "lint-staged",
         "spellcheck": "cspell lint --dot --gitignore --color --cache --show-suggestions \"(packages|apps)/**/*.@(html|js|cjs|mjs|ts|tsx|css|scss|md)\"",
         "typecheck": "turbo typecheck",
+        "typecheck:apps": "pnpm --filter @miaoma-doc/server typecheck && pnpm --filter @miaoma-doc/web typecheck",
+        "lint:apps": "pnpm --filter @miaoma-doc/server lint && pnpm --filter @miaoma-doc/web lint",
+        "test:apps": "pnpm --filter @miaoma-doc/server test && pnpm --filter @miaoma-doc/web test",
+        "gate:apps": "pnpm lint:apps && pnpm typecheck:apps && pnpm test:apps",
         "commit": "git-cz",
         "prepare": "husky"
     },
