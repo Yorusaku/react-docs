@@ -19,7 +19,7 @@
         "nestjs",
         "server"
     ],
-    "description": "基于 Prosemirror 和 Tiptap 实现的类 Notion、飞书文档风格可扩展文本编辑器。服务端",
+    "description": "Miaoma Docs backend server",
     "scripts": {
         "prebuild": "rimraf dist",
         "build": "nest build",
@@ -27,7 +27,13 @@
         "start:dev": "nest start --watch",
         "start:debug": "nest start --debug --watch",
         "start:prod": "node dist/main",
-        "clean": "rimraf dist"
+        "clean": "rimraf dist",
+        "migration:run": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:run -d src/config/typeorm-datasource.ts",
+        "migration:revert": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:revert -d src/config/typeorm-datasource.ts",
+        "migration:generate": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:generate src/migrations/AutoMigration -d src/config/typeorm-datasource.ts",
+        "lint": "eslint \"src/**/*.ts\" \"test/**/*.ts\"",
+        "typecheck": "tsc --noEmit -p tsconfig.json",
+        "test": "vitest run --config vitest.config.mjs"
     },
     "dependencies": {
         "@nest-modules/mailer": "1.3.22",
@@ -66,7 +72,8 @@
         "yjs": "13.6.20",
         "y-protocols": "1.0.6",
         "y-postgresql": "1.0.0",
-        "xml-js": "1.6.11"
+        "xml-js": "1.6.11",
+        "bcryptjs": "2.4.3"
     },
     "devDependencies": {
         "pm2": "5.4.2",

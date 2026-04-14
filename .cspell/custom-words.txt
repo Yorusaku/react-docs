@@ -9,6 +9,7 @@ colwidth
 contenteditable
 contentto
 Cryge
+DIFY
 doesn
 Doubleclick
 draghandles
@@ -32,6 +33,7 @@ numberedlist
 nums
 objc
 pgdb
+plainto
 prosemirror
 remaing
 selectednode
@@ -47,6 +49,8 @@ tempfile
 Textblock
 tiptap
 tmpfiles
+tsquery
+tsvector
 typeorm
 websockets
 WRVZ
