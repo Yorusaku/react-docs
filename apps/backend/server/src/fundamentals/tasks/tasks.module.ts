@@ -5,9 +5,11 @@
  */
 import { Module } from '@nestjs/common'
 
+import { PageModule } from '../../modules/page/page.module'
 import { TasksService } from './tasks.service'
 
 @Module({
+    imports: [PageModule],
     providers: [TasksService],
 })
 export class TasksModule {}

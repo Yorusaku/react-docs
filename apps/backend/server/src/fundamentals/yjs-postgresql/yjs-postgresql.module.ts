@@ -1,8 +1,3 @@
-/*
- *   Copyright (c) 2024 妙码学院 @Heyi
- *   All rights reserved.
- *   妙码学院官方出品，作者 @Heyi，供学员学习使用，可用作练习，可用作美化简历，不可开源。
- */
 import { DynamicModule, Global, Logger, Module } from '@nestjs/common'
 import { PostgresqlPersistence } from 'y-postgresql'
 import * as Y from 'yjs'
@@ -32,17 +27,17 @@ export class YjsPostgresqlModule {
                 {
                     provide: 'YJS_POSTGRESQL_ADAPTER',
                     useFactory: async () => {
-                        // 确保只初始化一次客户端
-                        Logger.log('🚀 ~ yjs postgresql: ~ options:', options)
-                        const isProd = process.env.NODE_ENV === 'production'
-                        const host = process.env.PG_HOST ?? (isProd ? '172.28.49.109' : 'localhost')
-                        const port = Number(process.env.PG_PORT ?? 5432)
-                        const user = process.env.PG_USER ?? 'postgres'
-                        const database = process.env.PG_DATABASE ?? 'postgres'
-                        const password = process.env.PG_PASSWORD ?? 'xiaoer'
-                        /**
-                         * 妙码学院出品，作者 @Heyi。
-                         */
+                        const host = options?.host ?? process.env.PG_HOST ?? 'localhost'
+                        const port = options?.port ?? Number(process.env.PG_PORT ?? 5432)
+                        const user = options?.user ?? process.env.PG_USER ?? 'postgres'
+                        const database = options?.database ?? process.env.PG_DATABASE ?? 'postgres'
+                        const password = options?.password ?? process.env.PG_PASSWORD ?? ''
+                        const tableName = options?.table?.name ?? 'yjs-writings'
+                        const useIndex = options?.table?.useIndex ?? false
+                        const flushSize = options?.table?.flushSize ?? 200
+
+                        Logger.log(`yjs-postgresql connected: host=${host} db=${database} table=${tableName}`)
+
                         const pgdb = await PostgresqlPersistence.build(
                             {
                                 host,
@@ -51,36 +46,20 @@ export class YjsPostgresqlModule {
                                 database,
                                 password,
                             },
-                            { tableName: 'yjs-writings', useIndex: false, flushSize: 200 }
+                            { tableName, useIndex, flushSize }
                         )
 
                         setPersistence({
                             bindState: async (docName, ydoc) => {
-                                Logger.log('🚀 ~ bindState: ~ docName:' + docName)
-                                // Here you listen to granular document updates and store them in the database
-                                // You don't have to do this, but it ensures that you don't lose content when the server crashes
-                                // See https://github.com/yjs/yjs#Document-Updates for documentation on how to encode
-                                // document updates
-
-                                // official default code from: https://github.com/yjs/y-websocket/blob/37887badc1f00326855a29fc6b9197745866c3aa/bin/utils.js#L36
                                 const persistedYdoc = await pgdb.getYDoc(docName)
                                 const newUpdates = Y.encodeStateAsUpdate(ydoc)
-                                pgdb.storeUpdate(docName, newUpdates)
+                                await pgdb.storeUpdate(docName, newUpdates)
                                 Y.applyUpdate(ydoc, Y.encodeStateAsUpdate(persistedYdoc))
                                 ydoc.on('update', async (update: Uint8Array) => {
-                                    pgdb.storeUpdate(docName, update)
+                                    await pgdb.storeUpdate(docName, update)
                                 })
                             },
-                            writeState: async (docName, ydoc) => {
-                                Logger.log('🚀 ~ writeState: ~ docName, ydoc:', docName, ydoc)
-                                // This is called when all connections to the document are closed.
-                                // In the future, this method might also be called in intervals or after a certain number of updates.
-                                return new Promise(resolve => {
-                                    // When the returned Promise resolves, the document will be destroyed.
-                                    // So make sure that the document really has been written to the database.
-                                    resolve(true)
-                                })
-                            },
+                            writeState: async () => true,
                         })
 
                         return pgdb

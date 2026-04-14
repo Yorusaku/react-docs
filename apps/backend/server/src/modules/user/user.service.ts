@@ -1,13 +1,11 @@
-/*
- *   Copyright (c) 2024 妙码学院 @Heyi
- *   All rights reserved.
- *   妙码学院官方出品，作者 @Heyi，供学员学习使用，可用作练习，可用作美化简历，不可开源。
- */
 import { HttpException, Injectable } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
 
 import { UserEntity } from '../../entities/user.entity'
+import { hashPassword, verifyPassword } from './password'
+
+type SafeUser = Omit<UserEntity, 'password'>
 
 @Injectable()
 export class UserService {
@@ -16,22 +14,51 @@ export class UserService {
         private readonly userRepository: Repository<UserEntity>
     ) {}
 
-    async validateUser(username: string, pass: string): Promise<any> {
+    async validateUser(username: string, pass: string): Promise<UserEntity | null> {
         const user = await this.userRepository.findOne({
-            where: { username, password: pass },
+            where: { username },
         })
-        return user
+        if (!user) {
+            return null
+        }
+
+        const ok = await verifyPassword(pass, user.password)
+        return ok ? user : null
     }
 
-    async register(body) {
+    async register(body: Pick<UserEntity, 'username' | 'password'>): Promise<SafeUser> {
         const userIsExist = await this.userRepository.findOne({
             where: { username: body.username },
         })
         if (userIsExist) {
             throw new HttpException({ message: '用户已存在', error: 'user is existed' }, 400)
         }
-        const user = await this.userRepository.create(body)
-        await this.userRepository.save(user)
-        return user
+
+        const password = await hashPassword(body.password)
+        const user = this.userRepository.create({
+            ...body,
+            password,
+        })
+        const saved = await this.userRepository.save(user)
+
+        const result = { ...saved }
+        delete result.password
+        return result
+    }
+
+    async findById(id: number): Promise<UserEntity | null> {
+        return this.userRepository.findOne({ where: { id } })
+    }
+
+    async listUsers(currentUserId: number) {
+        const rows = await this.userRepository.find({
+            order: { id: 'ASC' },
+            take: 200,
+        })
+        return rows.map(row => ({
+            id: row.id,
+            username: row.username,
+            isCurrent: row.id === currentUserId,
+        }))
     }
 }

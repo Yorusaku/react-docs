@@ -1,30 +1,69 @@
-/*
- *   Copyright (c) 2024 妙码学院 @Heyi
- *   All rights reserved.
- *   妙码学院官方出品，作者 @Heyi，供学员学习使用，可用作练习，可用作美化简历，不可开源。
- */
-
 import { z } from 'zod'
 
-/**
- * 创建应用的数据传输对象
- */
+import { DOC_OPERATIONS, DOC_ROLES } from './page-acl.constants'
+
 export const createPageSchema = z
     .object({
-        emoji: z.string(),
-        title: z.string(),
+        emoji: z.string().min(1).max(8),
+        title: z.string().min(1).max(255),
     })
     .required()
 
 export type CreatePageDto = z.infer<typeof createPageSchema>
 
-/**
- * 删除应用的数据传输对象
- */
+export const updatePageSchema = z
+    .object({
+        pageId: z.string().min(1),
+        title: z.string().min(1).max(255),
+    })
+    .required()
+
+export type UpdatePageDto = z.infer<typeof updatePageSchema>
+
 export const deletePageSchema = z
     .object({
-        pageId: z.string(),
+        pageId: z.string().min(1),
     })
     .required()
 
 export type DeletePageDto = z.infer<typeof deletePageSchema>
+
+export const inviteMemberSchema = z
+    .object({
+        username: z.string().min(1).max(255),
+        role: z.enum(DOC_ROLES).default('viewer'),
+        operations: z.array(z.enum(DOC_OPERATIONS)).default([]),
+    })
+    .required()
+
+export type InviteMemberDto = z.infer<typeof inviteMemberSchema>
+
+export const updateAclSchema = z
+    .object({
+        members: z.array(
+            z.object({
+                userId: z.number().int().positive(),
+                role: z.enum(DOC_ROLES),
+                operations: z.array(z.enum(DOC_OPERATIONS)).default([]),
+            })
+        ),
+    })
+    .required()
+
+export type UpdateAclDto = z.infer<typeof updateAclSchema>
+
+export const updatePageTagsSchema = z
+    .object({
+        tags: z.array(z.string().min(1).max(80)).max(30),
+    })
+    .required()
+
+export type UpdatePageTagsDto = z.infer<typeof updatePageTagsSchema>
+
+export const createSnapshotSchema = z
+    .object({
+        title: z.string().min(1).max(255).optional(),
+    })
+    .required()
+
+export type CreateSnapshotDto = z.infer<typeof createSnapshotSchema>

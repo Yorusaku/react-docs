@@ -1,16 +1,18 @@
-/*
- * Copyright (c) 2024 Miaoma Academy @Heyi
- * All rights reserved.
- * Internal learning project. Not intended for open-source distribution.
- */
 import { Module } from '@nestjs/common'
+import { JwtModule } from '@nestjs/jwt'
 
+import { jwtConstants } from '../auth/constants'
+import { UserModule } from '../user/user.module'
 import { DocYjsGateway } from './doc-yjs.gateway'
 
-// Thin module that only registers the collaboration gateway.
 @Module({
-    imports: [],
+    imports: [
+        UserModule,
+        JwtModule.register({
+            secret: jwtConstants.secret,
+            signOptions: { expiresIn: '1 days' },
+        }),
+    ],
     providers: [DocYjsGateway],
-    exports: [],
 })
 export class DocYjsModule {}

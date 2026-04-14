@@ -1,63 +1,63 @@
-/*
- * Copyright (c) 2024 Miaoma Academy @Heyi
- * All rights reserved.
- * Internal learning project. Not intended for open-source distribution.
- */
-import { Logger, OnModuleInit } from '@nestjs/common'
+import { IncomingMessage } from 'node:http'
+
+import { Logger } from '@nestjs/common'
+import { JwtService } from '@nestjs/jwt'
 import { OnGatewayConnection, OnGatewayDisconnect, SubscribeMessage, WebSocketGateway, WebSocketServer } from '@nestjs/websockets'
-import { Request } from 'express'
-import { Server } from 'ws'
+import { Server, WebSocket } from 'ws'
 
 import { setupWSConnection } from '../../fundamentals/yjs-postgresql/utils'
+import { UserService } from '../user/user.service'
+import { resolveWsToken, verifyWsToken } from './ws-auth'
 
-// This gateway is the entry point for collaborative editing.
-// The frontend y-websocket client connects to /doc-yjs, then the low-level
-// Yjs sync logic takes over inside setupWSConnection.
 @WebSocketGateway({
     path: 'doc-yjs',
 })
-export class DocYjsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnModuleInit {
-    onModuleInit() {}
+export class DocYjsGateway implements OnGatewayConnection, OnGatewayDisconnect {
+    constructor(
+        private readonly jwtService: JwtService,
+        private readonly userService: UserService
+    ) {}
 
-    // The server instance is available if we ever want manual ws broadcasting.
     @WebSocketServer() server: Server
 
-    // Simple demo event. Real Yjs syncing does not depend on this message.
     @SubscribeMessage('ping')
     ping() {
         return 'pong'
     }
 
-    // Called when the browser opens a WebSocket connection to /doc-yjs.
-    // setupWSConnection handles room binding, sync, awareness, and persistence hooks.
-    handleConnection(connection: WebSocket, request: Request) {
-        // We can handle authentication of user like below
-        // const token = getCookie(request?.headers?.cookie, 'auth_token');
-        // const ERROR_CODE_WEBSOCKET_AUTH_FAILED = 4000;
-        // if (!token) {
-        //   connection.close(ERROR_CODE_WEBSOCKET_AUTH_FAILED);
-        // } else {
-        //   const signedJwt = this.authService.verifyToken(token);
-        //   if (!signedJwt) connection.close(ERROR_CODE_WEBSOCKET_AUTH_FAILED);
-        //   else {
-        //     const docName = getCookie(request?.headers?.cookie, 'roomName');
-        //     setupWSConnection(connection, request, { ...(docName && { docName }) });
-        //   }
-        // }
+    async handleConnection(connection: WebSocket, request: IncomingMessage) {
+        const token = resolveWsToken(request)
+        if (!token) {
+            connection.close(4001, 'Unauthorized')
+            return
+        }
 
-        setupWSConnection(connection, request)
+        try {
+            const payload = verifyWsToken(this.jwtService, token)
+            if (!payload?.sub) {
+                connection.close(4001, 'Unauthorized')
+                return
+            }
+
+            const user = await this.userService.findById(payload.sub)
+            if (!user) {
+                connection.close(4001, 'Unauthorized')
+                return
+            }
+
+            setupWSConnection(connection, request)
+        } catch (error) {
+            Logger.warn(`WS auth failed: ${(error as Error).message}`)
+            connection.close(4001, 'Unauthorized')
+        }
     }
 
-    // Connection cleanup is mostly done in closeConn inside utils.ts.
     handleDisconnect() {
-        Logger.log(`Client disconnected`)
+        Logger.log('Client disconnected')
     }
 
-    // Demo message. Real document updates are exchanged by Yjs binary protocol.
     @SubscribeMessage('doc-update')
-    docUpdate(client: any, payload: any) {
-        Logger.log(`doc-update, payload: ${JSON.stringify(payload)}`)
-
+    docUpdate(_client: WebSocket, payload: unknown) {
         return payload
     }
 }
