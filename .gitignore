@@ -33,7 +33,6 @@ coverage
 *.sw?
 
 
-.cspellcache
 .eslintcache
 
 
@@ -41,3 +40,7 @@ coverage
 
 .devcontainer/data
 .devcontainer/postgresql_data
+
+# Frontend e2e artifacts
+apps/frontend/web/playwright-report/
+apps/frontend/web/test-results/
