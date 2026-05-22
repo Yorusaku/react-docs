@@ -1,5 +1,5 @@
 import { SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@miaoma-doc/shadcn-shared-ui/components/ui/sidebar'
-import { Bell, FileStack, Search, Trash2, Waypoints } from 'lucide-react'
+import { Activity, Bell, FileStack, KeyRound, Logs, Search, ShieldCheck, Trash2, Waypoints } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
 
 export function AsideHeader() {
@@ -49,6 +49,38 @@ export function AsideHeader() {
                         <NavLink to="/trash">
                             <Trash2 />
                             <span>回收站</span>
+                        </NavLink>
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                    <SidebarMenuButton asChild>
+                        <NavLink to="/audit">
+                            <Logs />
+                            <span>审计中心</span>
+                        </NavLink>
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                    <SidebarMenuButton asChild>
+                        <NavLink to="/governance">
+                            <ShieldCheck />
+                            <span>治理中心</span>
+                        </NavLink>
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                    <SidebarMenuButton asChild>
+                        <NavLink to="/observability">
+                            <Activity />
+                            <span>可观测</span>
+                        </NavLink>
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                    <SidebarMenuButton asChild>
+                        <NavLink to="/sso-lab">
+                            <KeyRound />
+                            <span>SSO 实验室</span>
                         </NavLink>
                     </SidebarMenuButton>
                 </SidebarMenuItem>

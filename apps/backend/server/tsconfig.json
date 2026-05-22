@@ -1,8 +1,7 @@
-{
+﻿{
     "extends": "../../../tsconfig.server.json",
+    "include": ["src/**/*", "test/**/*"],
     "compilerOptions": {
         "outDir": "./dist"
-        // "declaration": false
-        // "declarationDir": "./dist/types",
     }
 }

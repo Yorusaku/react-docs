@@ -9,7 +9,16 @@
         "lint": "eslint .",
         "preview": "vite preview",
         "typecheck": "tsc --noEmit",
-        "test": "vitest run --config vitest.config.ts"
+        "test": "pnpm test:unit",
+        "test:unit": "vitest run --config vitest.unit.config.ts",
+        "test:collab": "vitest run --config vitest.collab.config.ts",
+        "test:contract": "vitest run --config vitest.contract.config.ts",
+        "contract:lint": "node ./scripts/contract-lint.mjs",
+        "contract:typegen": "openapi-typescript ../../../docs/openapi/miaoma-docs-mock-openapi.yaml -o ./src/types/openapi.generated.ts",
+        "contract:test": "pnpm test:contract",
+        "test:e2e": "playwright test",
+        "test:e2e:ui": "playwright test --ui",
+        "test:e2e:debug": "playwright test --debug"
     },
     "dependencies": {
         "@miaoma-doc/core": "workspace:*",
@@ -34,6 +43,10 @@
         "yjs": "13.6.20"
     },
     "devDependencies": {
+        "@apidevtools/swagger-parser": "^12.1.0",
+        "@playwright/test": "^1.59.1",
+        "@testing-library/jest-dom": "^6.9.1",
+        "@testing-library/react": "^16.3.2",
         "@types/canvas-confetti": "1.6.4",
         "@types/d3-force": "3.0.10",
         "@types/pubsub-js": "1.8.6",
@@ -41,6 +54,8 @@
         "@types/react-dom": "^18.3.1",
         "@vitejs/plugin-react": "^4.3.3",
         "autoprefixer": "10.4.20",
+        "jsdom": "^29.1.1",
+        "openapi-typescript": "^7.10.1",
         "postcss": "8.4.47",
         "tailwindcss": "3.4.14",
         "vite": "^5.4.10"

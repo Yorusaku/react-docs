@@ -1,9 +1,12 @@
 import { Module } from '@nestjs/common'
 import { ConfigModule, ConfigService } from '@nestjs/config'
 import { ScheduleModule } from '@nestjs/schedule'
+import { ThrottlerModule } from '@nestjs/throttler'
 import { TypeOrmModule } from '@nestjs/typeorm'
 
 import databaseConfig from './config/database'
+import { HealthModule } from './fundamentals/observability/health.module'
+import { MetricsModule } from './fundamentals/observability/metrics.module'
 import { TasksModule } from './fundamentals/tasks/tasks.module'
 import { YjsPostgresqlModule } from './fundamentals/yjs-postgresql/yjs-postgresql.module'
 import { AiModule } from './modules/ai/ai.module'
@@ -22,6 +25,7 @@ import { UserModule } from './modules/user/user.module'
     imports: [
         ConfigModule.forRoot({ load: [databaseConfig] }),
         ScheduleModule.forRoot(),
+        ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
         TypeOrmModule.forRootAsync({
             imports: [ConfigModule],
             useFactory: (config: ConfigService) => config.get('database'),
@@ -40,6 +44,8 @@ import { UserModule } from './modules/user/user.module'
         AiModule,
         TasksModule,
         YjsPostgresqlModule.forRoot(),
+        HealthModule,
+        MetricsModule,
     ],
 })
 export class AppModule {}

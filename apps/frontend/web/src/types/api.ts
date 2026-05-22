@@ -1,46 +1,25 @@
 import { PartialBlock } from '@miaoma-doc/core'
 
+import type { components } from './openapi.generated'
 import { Page } from './page'
 
-export interface CreateUserPayload {
-    username: string
-    password: string
-}
+type ContractSchemas = components['schemas']
 
-export interface LoginPayload {
-    username: string
-    password: string
-}
+export type CreateUserPayload = ContractSchemas['RegisterPayload']
 
-export interface LoginRes {
-    data: {
-        access_token: string
-    }
-}
+export type LoginPayload = ContractSchemas['LoginPayload']
 
-export interface User {
-    id: number
-    username: string
-    email?: string | null
-}
+export type LoginRes = ContractSchemas['LoginResponse']
 
-export interface CurrentUserRes {
-    data: User
-}
+export type User = ContractSchemas['User'] & { email?: string | null }
 
-export interface UserListRes {
-    data: Array<{ id: number; username: string; isCurrent: boolean }>
-}
+export type CurrentUserRes = ContractSchemas['CurrentUserResponse']
 
-export interface CreatePagePayload {
-    emoji: string
-    title: string
-}
+export type UserListRes = ContractSchemas['UserListResponse']
 
-export interface UpdatePagePayload {
-    pageId: string
-    title: string
-}
+export type CreatePagePayload = ContractSchemas['CreatePagePayload']
+
+export type UpdatePagePayload = ContractSchemas['UpdatePagePayload']
 
 export interface PageListRes {
     data: {
@@ -57,64 +36,27 @@ export interface PageGraphRes {
     data: WithLinksPage[]
 }
 
-export type DocRole = 'owner' | 'editor' | 'commenter' | 'viewer'
+export type DocRole = ContractSchemas['DocRole']
 
-export type DocOperation =
-    | 'share'
-    | 'member_manage'
-    | 'delete'
-    | 'restore'
-    | 'export'
-    | 'comment_moderate'
-    | 'template_manage'
-    | 'invite_user'
+export type DocOperation = ContractSchemas['DocOperation']
 
-export interface DocAclMember {
-    userId: number
-    username: string
-    role: DocRole
-    operations: DocOperation[]
-}
+export type DocAclMember = ContractSchemas['DocAclMember']
 
 export interface DocAclPolicy {
     data: DocAclMember[]
 }
 
-export interface CommentAnchor {
-    [key: string]: unknown
-}
+export type CommentAnchor = ContractSchemas['CommentAnchor']
 
-export interface CommentThread {
-    commentId: string
-    pageId: string
-    author: { id: number; username: string } | null
-    parentCommentId: string | null
-    content: string
-    anchor: CommentAnchor | null
-    resolved: boolean
-    hidden: boolean
-    mentionUserIds: number[]
-    createdAt: string
-    updatedAt: string
-    deletedAt: string | null
-}
+export type CommentThread = ContractSchemas['CommentThread']
 
-export interface NotificationItem {
-    notificationId: string
-    type: string
-    title: string
-    content: string | null
-    payload: Record<string, unknown>
-    readAt: string | null
-    createdAt: string
-}
+export type NotificationItem = ContractSchemas['NotificationItem']
 
-export interface NotificationListRes {
-    data: {
-        unreadCount: number
-        items: NotificationItem[]
-    }
-}
+export type NotificationListRes = ContractSchemas['NotificationListResponse']
+
+export type MarkNotificationReadRes = ContractSchemas['MarkNotificationReadResponse']
+
+export type MarkAllNotificationReadRes = ContractSchemas['MarkAllNotificationsReadResponse']
 
 export interface SnapshotItem {
     snapshotId: string
@@ -165,3 +107,59 @@ export interface AiChatRes {
         conversationId: string
     }
 }
+
+export interface SsoProvider {
+    key: 'wechat-work' | 'dingtalk'
+    name: string
+}
+
+export interface SsoStartRes {
+    data: {
+        provider: string
+        code: string
+        authorizeUrl: string
+    }
+}
+
+export interface SsoCallbackRes {
+    data: {
+        access_token: string
+        user: User
+    }
+}
+
+export interface OrgDepartment {
+    id: string
+    name: string
+}
+
+export interface OrgRoleMapping {
+    position: string
+    defaultRole: DocRole
+}
+
+export interface OrgUserMapping {
+    userId: number
+    username: string
+    departmentId: string
+    position: string
+    defaultRole: DocRole
+}
+
+export interface OrgMappingRes {
+    data: {
+        departments: OrgDepartment[]
+        roleMappings: OrgRoleMapping[]
+        users: OrgUserMapping[]
+    }
+}
+
+export type AuditEventItem = ContractSchemas['AuditEventItem']
+
+export type AuditEventsRes = ContractSchemas['AuditEventsResponse']
+
+export type AuditStatsRes = ContractSchemas['AuditStatsResponse']
+
+export type RetentionPolicy = ContractSchemas['RetentionPolicy']
+
+export type ObservabilityDashboardRes = ContractSchemas['ObservabilityDashboardResponse']

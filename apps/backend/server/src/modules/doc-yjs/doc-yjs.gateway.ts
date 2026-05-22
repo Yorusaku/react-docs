@@ -5,6 +5,7 @@ import { JwtService } from '@nestjs/jwt'
 import { OnGatewayConnection, OnGatewayDisconnect, SubscribeMessage, WebSocketGateway, WebSocketServer } from '@nestjs/websockets'
 import { Server, WebSocket } from 'ws'
 
+import { collabConnectionsActive } from '../../fundamentals/observability/metrics.controller'
 import { setupWSConnection } from '../../fundamentals/yjs-postgresql/utils'
 import { UserService } from '../user/user.service'
 import { resolveWsToken, verifyWsToken } from './ws-auth'
@@ -46,6 +47,7 @@ export class DocYjsGateway implements OnGatewayConnection, OnGatewayDisconnect {
             }
 
             setupWSConnection(connection, request)
+            collabConnectionsActive.inc()
         } catch (error) {
             Logger.warn(`WS auth failed: ${(error as Error).message}`)
             connection.close(4001, 'Unauthorized')
@@ -54,6 +56,7 @@ export class DocYjsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     handleDisconnect() {
         Logger.log('Client disconnected')
+        collabConnectionsActive.dec()
     }
 
     @SubscribeMessage('doc-update')

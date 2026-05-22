@@ -1,4 +1,4 @@
-name: CI
+﻿name: CI
 
 on:
     push:
@@ -10,6 +10,20 @@ on:
 jobs:
     quality:
         runs-on: ubuntu-latest
+        services:
+            postgres:
+                image: postgres:15
+                env:
+                    POSTGRES_USER: postgres
+                    POSTGRES_PASSWORD: postgres
+                    POSTGRES_DB: miaoma_test
+                ports:
+                    - 5432:5432
+                options: >-
+                    --health-cmd pg_isready
+                    --health-interval 10s
+                    --health-timeout 5s
+                    --health-retries 5
         steps:
             - name: Checkout
               uses: actions/checkout@v4
@@ -43,8 +57,37 @@ jobs:
             - name: Web lint
               run: pnpm --filter @miaoma-doc/web lint
 
-            - name: Server tests
-              run: pnpm --filter @miaoma-doc/server test
+            - name: Run migrations
+              run: pnpm --filter @miaoma-doc/server migration:run
+              env:
+                  PG_HOST: localhost
+                  PG_PORT: 5432
+                  PG_USER: postgres
+                  PG_PASSWORD: postgres
+                  PG_DATABASE: miaoma_test
+                  JWT_SECRET: ci-test-secret
 
-            - name: Web tests
-              run: pnpm --filter @miaoma-doc/web test
+            - name: Server unit tests
+              run: pnpm --filter @miaoma-doc/server test:unit
+
+            - name: Server integration tests
+              run: pnpm --filter @miaoma-doc/server test:integration
+              env:
+                  PG_HOST: localhost
+                  PG_PORT: 5432
+                  PG_USER: postgres
+                  PG_PASSWORD: postgres
+                  PG_DATABASE_TEST: miaoma_test
+                  JWT_SECRET: ci-test-secret
+
+            - name: Web unit tests
+              run: pnpm --filter @miaoma-doc/web test:unit
+
+            - name: Contract lint
+              run: pnpm --filter @miaoma-doc/web contract:lint
+
+            - name: Contract type generation
+              run: pnpm --filter @miaoma-doc/web contract:typegen
+
+            - name: Contract tests
+              run: pnpm --filter @miaoma-doc/web contract:test

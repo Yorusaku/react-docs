@@ -12,7 +12,7 @@ const importSort = require('eslint-plugin-simple-import-sort')
 
 const tseslint = require('typescript-eslint')
 
-const ignores = ['dist', 'build', '**/*.js', '**/*.mjs', '**/*.d.ts', 'eslint.config.js', 'commitlint.config.js']
+const ignores = ['dist', 'build', '**/*.js', '**/*.mjs', '**/*.d.ts', '**/openapi.generated.ts', 'eslint.config.js', 'commitlint.config.js']
 
 const frontendBuilderConfig = {
     files: ['apps/frontend/builder/**/*.{ts,tsx}'],

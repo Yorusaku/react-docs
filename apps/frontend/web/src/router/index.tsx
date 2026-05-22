@@ -1,9 +1,13 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 
 import { Layout } from '@/layout'
+import { AuditPage } from '@/pages/Audit'
 import { DocAclPage } from '@/pages/DocAcl'
+import { GovernancePage } from '@/pages/Governance'
 import { NotificationsPage } from '@/pages/Notifications'
+import { ObservabilityPage } from '@/pages/Observability'
 import { SearchPage } from '@/pages/Search'
+import { SsoLabPage } from '@/pages/SsoLab'
 import { TrashPage } from '@/pages/Trash'
 import { DocList } from '@/views/Doc'
 import { Doc } from '@/views/Doc/[id]'
@@ -51,6 +55,22 @@ export const router: PickRouter<A> = createBrowserRouter([
             {
                 path: 'trash',
                 element: <TrashPage />,
+            },
+            {
+                path: 'audit',
+                element: <AuditPage />,
+            },
+            {
+                path: 'governance',
+                element: <GovernancePage />,
+            },
+            {
+                path: 'observability',
+                element: <ObservabilityPage />,
+            },
+            {
+                path: 'sso-lab',
+                element: <SsoLabPage />,
             },
             {
                 path: '/',

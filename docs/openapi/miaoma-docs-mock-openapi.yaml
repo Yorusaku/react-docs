@@ -1,0 +1,1121 @@
+openapi: 3.0.3
+info:
+  title: Miaoma Docs Mock Contract
+  version: 1.1.0
+  description: Contract-first API spec for the mock-driven collaboration docs system.
+servers:
+  - url: /api
+security:
+  - bearerAuth: []
+tags:
+  - name: auth
+  - name: page
+  - name: acl
+  - name: comment
+  - name: notification
+  - name: governance
+  - name: audit
+  - name: observability
+paths:
+  /auth/login:
+    post:
+      tags: [auth]
+      summary: Login and return access token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginPayload'
+      responses:
+        '200':
+          description: Login success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /auth/logout:
+    post:
+      tags: [auth]
+      summary: Logout current session
+      responses:
+        '200':
+          description: Logout success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BooleanResponse'
+  /currentUser:
+    get:
+      tags: [auth]
+      summary: Get current user
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentUserResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /user/register:
+    post:
+      tags: [auth]
+      summary: Register user
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterPayload'
+      responses:
+        '200':
+          description: Register success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisterResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /user/list:
+    get:
+      tags: [auth]
+      summary: List users
+      responses:
+        '200':
+          description: User list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserListResponse'
+
+  /page:
+    get:
+      tags: [page]
+      summary: List pages
+      responses:
+        '200':
+          description: Page list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageListResponse'
+    post:
+      tags: [page]
+      summary: Create page
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePagePayload'
+      responses:
+        '200':
+          description: Page created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageItemResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+    put:
+      tags: [page]
+      summary: Update page
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePagePayload'
+      responses:
+        '200':
+          description: Page updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageItemResponse'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    delete:
+      tags: [page]
+      summary: Soft delete page
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [pageId]
+              properties:
+                pageId:
+                  type: string
+      responses:
+        '200':
+          description: Soft deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageItemResponse'
+  /page/{pageId}:
+    get:
+      tags: [page]
+      summary: Page detail
+      parameters:
+        - $ref: '#/components/parameters/PageIdPath'
+      responses:
+        '200':
+          description: Page detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageItemResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /page/{pageId}/acl:
+    get:
+      tags: [acl]
+      summary: Get ACL
+      parameters:
+        - $ref: '#/components/parameters/PageIdPath'
+      responses:
+        '200':
+          description: ACL rows
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocAclResponse'
+    put:
+      tags: [acl]
+      summary: Update ACL
+      parameters:
+        - $ref: '#/components/parameters/PageIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [members]
+              properties:
+                members:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/DocAclMember'
+      responses:
+        '200':
+          description: ACL updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocAclResponse'
+
+  /page/{pageId}/comments:
+    get:
+      tags: [comment]
+      summary: List comments
+      parameters:
+        - $ref: '#/components/parameters/PageIdPath'
+      responses:
+        '200':
+          description: Comment threads
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommentListResponse'
+    post:
+      tags: [comment]
+      summary: Create comment
+      parameters:
+        - $ref: '#/components/parameters/PageIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCommentPayload'
+      responses:
+        '200':
+          description: Comment created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateCommentResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /comments/{commentId}:
+    patch:
+      tags: [comment]
+      summary: Update comment
+      parameters:
+        - $ref: '#/components/parameters/CommentIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCommentPayload'
+      responses:
+        '200':
+          description: Comment updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateCommentResponse'
+    delete:
+      tags: [comment]
+      summary: Delete comment
+      parameters:
+        - $ref: '#/components/parameters/CommentIdPath'
+      responses:
+        '200':
+          description: Comment deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteCommentResponse'
+
+  /notifications:
+    get:
+      tags: [notification]
+      summary: List notifications
+      parameters:
+        - $ref: '#/components/parameters/NotificationStatus'
+        - $ref: '#/components/parameters/CursorQuery'
+        - $ref: '#/components/parameters/LimitQuery'
+      responses:
+        '200':
+          description: Notification list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationListResponse'
+  /notifications/{id}/read:
+    patch:
+      tags: [notification]
+      summary: Mark one as read
+      parameters:
+        - $ref: '#/components/parameters/NotificationIdPath'
+      responses:
+        '200':
+          description: Mark success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarkNotificationReadResponse'
+  /notifications/read-all:
+    patch:
+      tags: [notification]
+      summary: Mark all as read
+      responses:
+        '200':
+          description: Mark all success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarkAllNotificationsReadResponse'
+
+  /governance/retention:
+    get:
+      tags: [governance]
+      summary: Get retention policy
+      responses:
+        '200':
+          description: Retention policy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RetentionPolicyResponse'
+    put:
+      tags: [governance]
+      summary: Update retention policy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RetentionPolicy'
+      responses:
+        '200':
+          description: Retention updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RetentionPolicyResponse'
+
+  /audit/events:
+    get:
+      tags: [audit]
+      summary: Query audit events
+      parameters:
+        - in: query
+          name: type
+          schema:
+            type: string
+        - in: query
+          name: actorUserId
+          schema:
+            type: integer
+        - in: query
+          name: targetType
+          schema:
+            type: string
+        - in: query
+          name: from
+          schema:
+            type: string
+            format: date-time
+        - in: query
+          name: to
+          schema:
+            type: string
+            format: date-time
+        - $ref: '#/components/parameters/CursorQuery'
+        - $ref: '#/components/parameters/LimitQuery'
+      responses:
+        '200':
+          description: Audit events
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditEventsResponse'
+  /audit/stats:
+    get:
+      tags: [audit]
+      summary: Audit aggregation metrics
+      parameters:
+        - in: query
+          name: days
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 30
+            default: 7
+      responses:
+        '200':
+          description: Audit stats
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditStatsResponse'
+  /audit/emit:
+    post:
+      tags: [audit]
+      summary: Emit extra audit event
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmitAuditPayload'
+      responses:
+        '200':
+          description: Emit success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BooleanResponse'
+
+  /observability/dashboard:
+    get:
+      tags: [observability]
+      summary: Observability dashboard
+      responses:
+        '200':
+          description: Dashboard metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObservabilityDashboardResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    PageIdPath:
+      in: path
+      name: pageId
+      required: true
+      schema:
+        type: string
+    CommentIdPath:
+      in: path
+      name: commentId
+      required: true
+      schema:
+        type: string
+    NotificationIdPath:
+      in: path
+      name: id
+      required: true
+      schema:
+        type: string
+    CursorQuery:
+      in: query
+      name: cursor
+      schema:
+        type: string
+    LimitQuery:
+      in: query
+      name: limit
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    NotificationStatus:
+      in: query
+      name: status
+      schema:
+        type: string
+        enum: [all, unread]
+        default: all
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Forbidden:
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [success, message]
+      properties:
+        success:
+          type: boolean
+          enum: [false]
+        message:
+          type: string
+    BooleanResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        data:
+          type: object
+          required: [success]
+          properties:
+            success:
+              type: boolean
+              enum: [true]
+    LoginPayload:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+    RegisterPayload:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+    User:
+      type: object
+      required: [id, username]
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+    LoginResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        data:
+          type: object
+          required: [access_token]
+          properties:
+            access_token:
+              type: string
+    CurrentUserResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        data:
+          $ref: '#/components/schemas/User'
+    RegisterResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        data:
+          $ref: '#/components/schemas/User'
+    UserListItem:
+      type: object
+      required: [id, username, isCurrent]
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        isCurrent:
+          type: boolean
+    UserListResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserListItem'
+
+    DocRole:
+      type: string
+      enum: [owner, editor, commenter, viewer]
+    DocOperation:
+      type: string
+      enum: [share, member_manage, delete, restore, export, comment_moderate, template_manage, invite_user]
+    PageItem:
+      type: object
+      required: [pageId, emoji, title, createdAt, updatedAt]
+      properties:
+        pageId:
+          type: string
+        emoji:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        deletedAt:
+          type: string
+          format: date-time
+          nullable: true
+        lastSnapshotAt:
+          type: string
+          format: date-time
+          nullable: true
+    CreatePagePayload:
+      type: object
+      required: [emoji, title]
+      properties:
+        emoji:
+          type: string
+        title:
+          type: string
+    UpdatePagePayload:
+      type: object
+      required: [pageId, title]
+      properties:
+        pageId:
+          type: string
+        title:
+          type: string
+    PageListResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        data:
+          type: object
+          required: [pages, count]
+          properties:
+            pages:
+              type: array
+              items:
+                $ref: '#/components/schemas/PageItem'
+            count:
+              type: integer
+    PageItemResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        data:
+          $ref: '#/components/schemas/PageItem'
+    DocAclMember:
+      type: object
+      required: [userId, username, role, operations]
+      properties:
+        userId:
+          type: integer
+        username:
+          type: string
+        role:
+          $ref: '#/components/schemas/DocRole'
+        operations:
+          type: array
+          items:
+            $ref: '#/components/schemas/DocOperation'
+    DocAclResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/DocAclMember'
+
+    CommentAnchor:
+      type: object
+      additionalProperties: true
+    CommentThread:
+      type: object
+      required: [commentId, pageId, content, resolved, hidden, mentionUserIds, createdAt, updatedAt]
+      properties:
+        commentId:
+          type: string
+        pageId:
+          type: string
+        author:
+          allOf:
+            - $ref: '#/components/schemas/User'
+          nullable: true
+        parentCommentId:
+          type: string
+          nullable: true
+        content:
+          type: string
+        anchor:
+          allOf:
+            - $ref: '#/components/schemas/CommentAnchor'
+          nullable: true
+        resolved:
+          type: boolean
+        hidden:
+          type: boolean
+        mentionUserIds:
+          type: array
+          items:
+            type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        deletedAt:
+          type: string
+          format: date-time
+          nullable: true
+    CreateCommentPayload:
+      type: object
+      required: [content]
+      properties:
+        content:
+          type: string
+        parentCommentId:
+          type: string
+        mentionUserIds:
+          type: array
+          items:
+            type: integer
+        mentions:
+          type: array
+          items:
+            type: string
+        anchor:
+          $ref: '#/components/schemas/CommentAnchor'
+    CreateCommentResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        data:
+          type: object
+          required: [commentId, content, mentionUserIds, invalidMentions, createdAt]
+          properties:
+            commentId:
+              type: string
+            content:
+              type: string
+            mentionUserIds:
+              type: array
+              items:
+                type: integer
+            invalidMentions:
+              type: array
+              items:
+                type: string
+            createdAt:
+              type: string
+              format: date-time
+    UpdateCommentPayload:
+      type: object
+      properties:
+        content:
+          type: string
+        resolved:
+          type: boolean
+        hidden:
+          type: boolean
+    UpdateCommentResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        data:
+          type: object
+          required: [commentId, updatedAt]
+          properties:
+            commentId:
+              type: string
+            updatedAt:
+              type: string
+              format: date-time
+    DeleteCommentResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        data:
+          type: object
+          required: [commentId]
+          properties:
+            commentId:
+              type: string
+    CommentListResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/CommentThread'
+
+    NotificationItem:
+      type: object
+      required: [notificationId, type, title, payload, readAt, createdAt]
+      properties:
+        notificationId:
+          type: string
+        type:
+          type: string
+        title:
+          type: string
+        content:
+          type: string
+          nullable: true
+        payload:
+          type: object
+          additionalProperties: true
+        readAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+    NotificationListResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        data:
+          type: object
+          required: [unreadCount, nextCursor, items]
+          properties:
+            unreadCount:
+              type: integer
+            nextCursor:
+              type: string
+              nullable: true
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/NotificationItem'
+    MarkNotificationReadResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        data:
+          type: object
+          required: [notificationId, success]
+          properties:
+            notificationId:
+              type: string
+            success:
+              type: boolean
+    MarkAllNotificationsReadResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        data:
+          type: object
+          required: [success, affectedCount]
+          properties:
+            success:
+              type: boolean
+              enum: [true]
+            affectedCount:
+              type: integer
+
+    RetentionPolicy:
+      type: object
+      required: [snapshotDays, trashDays, auditDays]
+      properties:
+        snapshotDays:
+          type: integer
+          minimum: 1
+        trashDays:
+          type: integer
+          minimum: 1
+        auditDays:
+          type: integer
+          minimum: 1
+    RetentionPolicyResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        data:
+          $ref: '#/components/schemas/RetentionPolicy'
+
+    AuditEventItem:
+      type: object
+      required: [eventId, type, actorUserId, targetType, targetId, summary, meta, createdAt]
+      properties:
+        eventId:
+          type: string
+        type:
+          type: string
+        actorUserId:
+          type: integer
+          nullable: true
+        targetType:
+          type: string
+        targetId:
+          type: string
+          nullable: true
+        summary:
+          type: string
+        meta:
+          type: object
+          additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time
+    AuditEventsResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        data:
+          type: object
+          required: [items, nextCursor]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/AuditEventItem'
+            nextCursor:
+              type: string
+              nullable: true
+    AuditStatsResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        data:
+          type: object
+          required: [days, total, byType, trend, topActors]
+          properties:
+            days:
+              type: integer
+            total:
+              type: integer
+            byType:
+              type: array
+              items:
+                type: object
+                required: [type, count]
+                properties:
+                  type:
+                    type: string
+                  count:
+                    type: integer
+            trend:
+              type: array
+              items:
+                type: object
+                required: [date, count]
+                properties:
+                  date:
+                    type: string
+                  count:
+                    type: integer
+            topActors:
+              type: array
+              items:
+                type: object
+                required: [actorUserId, count]
+                properties:
+                  actorUserId:
+                    type: integer
+                    nullable: true
+                  count:
+                    type: integer
+    EmitAuditPayload:
+      type: object
+      required: [type, summary]
+      properties:
+        type:
+          type: string
+        summary:
+          type: string
+        targetType:
+          type: string
+        targetId:
+          type: string
+        meta:
+          type: object
+          additionalProperties: true
+
+    ObservabilityDashboardResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        data:
+          type: object
+          required: [mode, generatedAt, windows, definitions, collaboration, searchIndex, aiRateLimit, notifications, audit]
+          properties:
+            mode:
+              type: string
+              enum: [mock, real]
+            generatedAt:
+              type: string
+              format: date-time
+            windows:
+              type: object
+              required: [aiRateLimitSeconds, auditTrendDays]
+              properties:
+                aiRateLimitSeconds:
+                  type: integer
+                auditTrendDays:
+                  type: integer
+            definitions:
+              type: object
+              required: [collaboration, searchIndex, aiRateLimit, audit]
+              properties:
+                collaboration:
+                  type: string
+                searchIndex:
+                  type: string
+                aiRateLimit:
+                  type: string
+                audit:
+                  type: string
+            collaboration:
+              type: object
+              required: [wsGateway, currentConnections]
+              properties:
+                wsGateway:
+                  type: string
+                currentConnections:
+                  type: integer
+            searchIndex:
+              type: object
+              required: [pendingJobs, indexedPages]
+              properties:
+                pendingJobs:
+                  type: integer
+                indexedPages:
+                  type: integer
+            aiRateLimit:
+              type: object
+              required: [windowSeconds, maxRequestPerWindow, hitCount]
+              properties:
+                windowSeconds:
+                  type: integer
+                maxRequestPerWindow:
+                  type: integer
+                hitCount:
+                  type: integer
+            notifications:
+              type: object
+              required: [unreadCount]
+              properties:
+                unreadCount:
+                  type: integer
+            audit:
+              type: object
+              required: [totalEvents]
+              properties:
+                totalEvents:
+                  type: integer

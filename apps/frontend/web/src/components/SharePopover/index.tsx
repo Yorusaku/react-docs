@@ -5,6 +5,8 @@ import { useToast } from '@miaoma-doc/shadcn-shared-ui/hooks/use-toast'
 import { Share2 } from 'lucide-react'
 import { useMemo } from 'react'
 
+import * as srv from '@/services'
+
 import { buildDocShareLink } from './share-link'
 
 interface SharePopoverProps {
@@ -28,6 +30,19 @@ export function SharePopover(props: SharePopoverProps) {
                 input.select()
                 document.execCommand('copy')
                 document.body.removeChild(input)
+            }
+
+            if (pageId) {
+                try {
+                    await srv.emitAuditEvent({
+                        type: 'share_link_copy',
+                        summary: '复制分享链接',
+                        targetType: 'page',
+                        targetId: pageId,
+                    })
+                } catch {
+                    // ignore audit emission errors in share UX
+                }
             }
 
             toast({

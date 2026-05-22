@@ -12,7 +12,9 @@ import * as Y from 'yjs'
 import { SharePopover } from '@/components/SharePopover'
 import * as srv from '@/services'
 import { debounce } from '@/utils/debounce'
+import { perfMonitor } from '@/utils/performance-monitor'
 import { queryClient } from '@/utils/query-client'
+import { throttle } from '@/utils/throttle'
 
 import { AvatarList } from './AvatarList'
 import { DocComments } from './DocComments'
@@ -128,7 +130,8 @@ export const Doc = () => {
                 color: randomColor(),
             })
 
-            const changeHandler = () => {
+            const changeHandler = throttle(() => {
+                perfMonitor.recordAwarenessUpdate()
                 const states = provider.awareness.getStates()
                 const users = new Map<number, { name: string; color: string }>()
 
@@ -142,13 +145,19 @@ export const Doc = () => {
                 }
 
                 setRemoteUsers(users)
-            }
+            }, 300)
 
             provider.awareness.on('change', changeHandler)
             provider.connect()
             setIsReady(true)
 
+            // Log performance stats every 30 seconds
+            const statsInterval = setInterval(() => {
+                perfMonitor.logStats()
+            }, 30000)
+
             return () => {
+                clearInterval(statsInterval)
                 provider.awareness.off('change', changeHandler)
                 provider.disconnect()
                 provider.destroy()

@@ -20,7 +20,7 @@ import { MiaomaDocView } from '@miaoma-doc/shadcn'
 import { useQuery } from '@tanstack/react-query'
 import { Sparkles } from 'lucide-react'
 import PubSub from 'pubsub-js'
-import { useEffect, useMemo } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 // import { yXmlFragmentToProseMirrorFragment, yXmlFragmentToProseMirrorRootNode } from 'y-prosemirror'
 import { WebsocketProvider } from 'y-websocket'
 import * as Y from 'yjs'
@@ -107,17 +107,6 @@ export function DocEditor(props: DocEditorProps) {
         queryKey: ['currentUser'],
     })
 
-    // const userName = useMemo(() => {
-    //     const storedName = sessionStorage.getItem('miaomadoc-user-name')
-    //     if (storedName) {
-    //         return storedName
-    //     } else {
-    //         const randomName = `heyi-${Math.floor(Math.random() * 1000)}`
-    //         sessionStorage.setItem('miaomadoc-user-name', randomName)
-    //         return randomName
-    //     }
-    // }, [])
-
     const randomColor = useMemo(() => {
         const storedColor = sessionStorage.getItem('miaomadoc-user-color')
         if (storedColor) {
@@ -131,17 +120,25 @@ export function DocEditor(props: DocEditorProps) {
         return color
     }, [])
 
+    const getMentionItems = useCallback(
+        async (query: string) => {
+            const items = await getMentionMenuItems(editor, pageId)
+            return filterSuggestionItems(items, query)
+        },
+        [pageId]
+    )
+
+    const getSlashItems = useCallback(async (query: string) => {
+        return filterSuggestionItems([insertAI(editor), ...getDefaultReactSlashMenuItems(editor)], query)
+    }, [])
+
     const editor = useCreateMiaomaDoc(
         {
             schema,
             dictionary: locales.zh,
-            // initialContent,
             collaboration: {
-                // The Yjs Provider responsible for transporting updates:
                 provider,
-                // Where to store data in the Y.Doc:
                 fragment: doc.getXmlFragment(`document-store-${pageId}`),
-                // Information (name and color) for this user:
                 user: {
                     name: currentUser?.username ?? '',
                     color: randomColor,
@@ -161,22 +158,8 @@ export function DocEditor(props: DocEditorProps) {
 
     return (
         <MiaomaDocView editor={editor} theme="light" slashMenu={false}>
-            <SuggestionMenuController
-                triggerCharacter="@"
-                getItems={async query => {
-                    // @ts-expect-error getItems type
-                    const items = await getMentionMenuItems(editor, pageId)
-                    return filterSuggestionItems(items, query)
-                }}
-            />
-            {/* Replaces the default Slash Menu. */}
-            <SuggestionMenuController
-                triggerCharacter="/"
-                getItems={async query =>
-                    // Gets all default slash menu items and `insertAI` item.
-                    filterSuggestionItems([insertAI(editor), ...getDefaultReactSlashMenuItems(editor)], query)
-                }
-            />
+            <SuggestionMenuController triggerCharacter="@" getItems={getMentionItems} />
+            <SuggestionMenuController triggerCharacter="/" getItems={getSlashItems} />
             {/* @ts-expect-error editor schema type fix */}
             <BasicAIChat editor={editor} />
         </MiaomaDocView>

@@ -5,7 +5,16 @@ export const fetchComments = async (pageId: string): Promise<{ data: CommentThre
     return await request.get(`/page/${pageId}/comments`)
 }
 
-export const createComment = async (pageId: string, payload: { content: string; parentCommentId?: string; mentionUserIds?: number[] }) => {
+export const createComment = async (
+    pageId: string,
+    payload: {
+        content: string
+        parentCommentId?: string
+        mentionUserIds?: number[]
+        mentions?: string[]
+        anchor?: Record<string, unknown>
+    }
+) => {
     return await request.post(`/page/${pageId}/comments`, payload)
 }
 

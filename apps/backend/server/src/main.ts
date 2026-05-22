@@ -6,16 +6,32 @@
 import { NestFactory } from '@nestjs/core'
 import { WsAdapter } from '@nestjs/platform-ws'
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
+import helmet from 'helmet'
 
 import { AppModule } from './app.module'
 import { HttpExceptionFilter } from './fundamentals/common/filters/http-exception.filter'
+import { JsonLoggerService } from './fundamentals/observability/json-logger.service'
+import { validateEnv } from './fundamentals/security/env.validation'
 
 // Backend bootstrap flow:
 // 1. Create the Nest application from AppModule
 // 2. Register global capabilities such as filters, ws adapter, and Swagger
 // 3. Read the port and start listening
 async function bootstrap() {
-    const app = await NestFactory.create(AppModule)
+    // Validate required environment variables before starting.
+    validateEnv()
+
+    const app = await NestFactory.create(AppModule, {
+        logger: new JsonLoggerService(),
+    })
+
+    // Security: HTTP headers (helmet) and explicit CORS configuration.
+    app.use(helmet())
+    app.enableCors({
+        origin: process.env.CORS_ORIGIN?.split(',') ?? ['http://localhost:5173'],
+        methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+        credentials: true,
+    })
 
     // Normalize business errors into one response shape for the frontend.
     app.useGlobalFilters(new HttpExceptionFilter())

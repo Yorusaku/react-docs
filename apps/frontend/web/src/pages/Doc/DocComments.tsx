@@ -1,7 +1,7 @@
 import { Button } from '@miaoma-doc/shadcn-shared-ui/components/ui/button'
 import { Input } from '@miaoma-doc/shadcn-shared-ui/components/ui/input'
 import { useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 
 import * as srv from '@/services'
 import { queryClient } from '@/utils/query-client'
@@ -16,44 +16,101 @@ const parseMentionIds = (value: string) =>
         .map(item => Number(item.trim()))
         .filter(item => Number.isInteger(item) && item > 0)
 
+const parseMentionNames = (value: string) =>
+    value
+        .split(',')
+        .map(item => item.trim().replace(/^@+/, ''))
+        .filter(Boolean)
+
+const extractMentionNamesFromContent = (content: string) => {
+    const matches = content.match(/@([A-Za-z0-9_\-\u4e00-\u9fa5]+)/g) ?? []
+    return matches.map(item => item.replace(/^@+/, '').trim()).filter(Boolean)
+}
+
 export function DocComments(props: DocCommentsProps) {
     const { pageId } = props
     const [content, setContent] = useState('')
     const [mentionText, setMentionText] = useState('')
+    const [anchorText, setAnchorText] = useState('')
 
     const { data: comments = [], isLoading } = useQuery({
         queryKey: ['comments', pageId],
         enabled: !!pageId,
         queryFn: async () => (await srv.fetchComments(pageId)).data,
     })
+    const { data: users = [] } = useQuery({
+        queryKey: ['user-list'],
+        queryFn: async () => (await srv.listUsers()).data,
+    })
+
+    const userMap = useMemo(() => {
+        const map = new Map<string, number>()
+        for (const user of users) {
+            map.set(user.username, user.id)
+        }
+        return map
+    }, [users])
 
     const refetchComments = async () => {
         await queryClient.invalidateQueries({ queryKey: ['comments', pageId] })
     }
 
+    const parseAnchor = () => {
+        if (!anchorText.trim()) {
+            return undefined
+        }
+        try {
+            const parsed = JSON.parse(anchorText)
+            return typeof parsed === 'object' && parsed !== null ? (parsed as Record<string, unknown>) : undefined
+        } catch {
+            return undefined
+        }
+    }
+
     return (
         <div className="px-4 lg:px-[54px] pb-12">
             <div className="rounded border border-zinc-200 p-4">
-                <h2 className="text-sm font-semibold mb-3">评论与 @提醒</h2>
+                <h2 className="text-sm font-semibold mb-3">评论与提醒</h2>
                 <div className="space-y-2">
-                    <Input value={content} onChange={event => setContent(event.target.value)} placeholder="输入评论内容" />
+                    <Input
+                        value={content}
+                        onChange={event => setContent(event.target.value)}
+                        placeholder="输入评论内容，可直接 @username"
+                    />
                     <Input
                         value={mentionText}
                         onChange={event => setMentionText(event.target.value)}
-                        placeholder="提及用户ID，多个用逗号分隔（如：2,3）"
+                        placeholder="补充提及用户名，逗号分隔（如 @demo,@manager）"
+                    />
+                    <Input
+                        value={anchorText}
+                        onChange={event => setAnchorText(event.target.value)}
+                        placeholder='可选锚点 JSON（如 {"blockId":"b1","from":0,"to":12}）'
                     />
                     <Button
                         size="sm"
                         onClick={async () => {
-                            if (!content.trim()) {
+                            const normalizedContent = content.trim()
+                            if (!normalizedContent) {
                                 return
                             }
+                            const mentionNames = Array.from(
+                                new Set([...parseMentionNames(mentionText), ...extractMentionNamesFromContent(normalizedContent)])
+                            )
+                            const mentionUserIdsByName = mentionNames
+                                .map(name => userMap.get(name))
+                                .filter((item): item is number => typeof item === 'number')
+                            const mentionUserIds = Array.from(new Set([...mentionUserIdsByName, ...parseMentionIds(mentionText)]))
+
                             await srv.createComment(pageId, {
-                                content,
-                                mentionUserIds: parseMentionIds(mentionText),
+                                content: normalizedContent,
+                                mentionUserIds,
+                                mentions: mentionNames,
+                                anchor: parseAnchor(),
                             })
                             setContent('')
                             setMentionText('')
+                            setAnchorText('')
                             await refetchComments()
                         }}
                     >
@@ -95,7 +152,7 @@ export function DocComments(props: DocCommentsProps) {
                                 </div>
                                 <p className="text-sm">{item.content}</p>
                                 {item.mentionUserIds.length > 0 && (
-                                    <div className="text-xs text-zinc-500 mt-1">提及: {item.mentionUserIds.join(', ')}</div>
+                                    <div className="text-xs text-zinc-500 mt-1">提及用户ID: {item.mentionUserIds.join(', ')}</div>
                                 )}
                             </div>
                         ))}
