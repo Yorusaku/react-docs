@@ -834,3 +834,25 @@ RUN_COLLAB_TESTS=0
 -   当前仓库是内部学习与项目实践用途，不作为开源商业发行声明。
 -   README 以代码仓库当前能力为准，后续功能变更时需要同步更新本文档。
 -   当前 NestJS 后端真实控制器集中在认证、用户、页面、评论、通知、标签、模板、搜索和 AI；审计、治理、可观测、SSO 当前主要由前端页面、Mock 服务和 OpenAPI 契约承载。
+
+## 测试环境配置
+
+### 环境变量
+| 变量 | 默认值 | 用途 |
+|------|--------|------|
+| VITE_API_MODE | real | mock(内置Mock)/real(直连后端) |
+| VITE_WS_PROTOCOL | ws | WebSocket协议 |
+| PG_DATABASE_TEST | miaoma_test | 集成测试库 |
+| JWT_SECRET | 需设置 | 至少16字符 |
+| RUN_COLLAB_TESTS | 0 | 协同测试开关 |
+
+### Playwright
+pnpm --filter @miaoma-doc/web exec playwright install chromium
+
+### 新机器一键跑通
+1. pnpm install
+2. pnpm docker:start
+3. 复制 .env.example -> .env
+4. pnpm --filter @miaoma-doc/server migration:run
+5. pnpm dev
+6. pnpm gate:apps && pnpm contract:apps && pnpm gate:extended

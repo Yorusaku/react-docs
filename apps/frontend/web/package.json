@@ -16,9 +16,13 @@
         "contract:lint": "node ./scripts/contract-lint.mjs",
         "contract:typegen": "openapi-typescript ../../../docs/openapi/miaoma-docs-mock-openapi.yaml -o ./src/types/openapi.generated.ts",
         "contract:test": "pnpm test:contract",
+        "contract:real:lint": "node ./scripts/contract-lint.mjs docs/openapi/miaoma-docs-real-openapi.yaml",
+        "contract:real:typegen": "openapi-typescript ../../../docs/openapi/miaoma-docs-real-openapi.yaml -o ./src/types/openapi.real.generated.ts",
+        "contract:real:test": "pnpm test:contract",
         "test:e2e": "playwright test",
         "test:e2e:ui": "playwright test --ui",
-        "test:e2e:debug": "playwright test --debug"
+        "test:e2e:debug": "playwright test --debug",
+        "test:e2e:real": "VITE_API_MODE=real playwright test"
     },
     "dependencies": {
         "@miaoma-doc/core": "workspace:*",

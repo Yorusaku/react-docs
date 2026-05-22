@@ -1,10 +1,13 @@
-import path from 'node:path'
+﻿import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import SwaggerParser from '@apidevtools/swagger-parser'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const contractPath = path.resolve(__dirname, '../../../../docs/openapi/miaoma-docs-mock-openapi.yaml')
+
+const contractPath = process.argv[2]
+    ? path.resolve(process.argv[2])
+    : path.resolve(__dirname, '../../../../docs/openapi/miaoma-docs-mock-openapi.yaml')
 
 try {
     await SwaggerParser.validate(contractPath)

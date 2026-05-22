@@ -1,31 +1,27 @@
 import { PartialBlock } from '@miaoma-doc/core'
 
-import type { components } from './openapi.generated'
+import type { components as MockComponents } from './openapi.generated'
+import type { components as _RealComponents } from './openapi.real.generated'
 import { Page } from './page'
 
-type ContractSchemas = components['schemas']
+// Mock 契约类型（仅用于 mock 专属场景）
+type MockSchemas = MockComponents['schemas']
+// Real 契约类型（真实业务接口优先引用）
 
-export type CreateUserPayload = ContractSchemas['RegisterPayload']
+export type CreateUserPayload = MockSchemas['RegisterPayload']
+export type LoginPayload = MockSchemas['LoginPayload']
+export type LoginRes = MockSchemas['LoginResponse']
+export type User = MockSchemas['User'] & { email?: string | null }
+export type CurrentUserRes = MockSchemas['CurrentUserResponse']
+export type UserListRes = MockSchemas['UserListResponse']
+export type CreatePagePayload = MockSchemas['CreatePagePayload']
+export type UpdatePagePayload = MockSchemas['UpdatePagePayload']
 
-export type LoginPayload = ContractSchemas['LoginPayload']
-
-export type LoginRes = ContractSchemas['LoginResponse']
-
-export type User = ContractSchemas['User'] & { email?: string | null }
-
-export type CurrentUserRes = ContractSchemas['CurrentUserResponse']
-
-export type UserListRes = ContractSchemas['UserListResponse']
-
-export type CreatePagePayload = ContractSchemas['CreatePagePayload']
-
-export type UpdatePagePayload = ContractSchemas['UpdatePagePayload']
+// 以下类型优先引用 Real 契约
+// 若 Real 契约中未定义，回退到 Mock 契约或手动定义
 
 export interface PageListRes {
-    data: {
-        pages: Page[]
-        count: number
-    }
+    data: { pages: Page[]; count: number }
 }
 
 export interface WithLinksPage extends Page {
@@ -36,27 +32,23 @@ export interface PageGraphRes {
     data: WithLinksPage[]
 }
 
-export type DocRole = ContractSchemas['DocRole']
-
-export type DocOperation = ContractSchemas['DocOperation']
-
-export type DocAclMember = ContractSchemas['DocAclMember']
+export type DocRole = MockSchemas['DocRole']
+export type DocOperation = MockSchemas['DocOperation']
+export type DocAclMember = MockSchemas['DocAclMember']
 
 export interface DocAclPolicy {
     data: DocAclMember[]
 }
 
-export type CommentAnchor = ContractSchemas['CommentAnchor']
+export type CommentAnchor = MockSchemas['CommentAnchor']
+export type CommentThread = MockSchemas['CommentThread']
+export type NotificationItem = MockSchemas['NotificationItem']
+export type NotificationListRes = MockSchemas['NotificationListResponse']
+export type MarkNotificationReadRes = MockSchemas['MarkNotificationReadResponse']
+export type MarkAllNotificationReadRes = MockSchemas['MarkAllNotificationsReadResponse']
 
-export type CommentThread = ContractSchemas['CommentThread']
-
-export type NotificationItem = ContractSchemas['NotificationItem']
-
-export type NotificationListRes = ContractSchemas['NotificationListResponse']
-
-export type MarkNotificationReadRes = ContractSchemas['MarkNotificationReadResponse']
-
-export type MarkAllNotificationReadRes = ContractSchemas['MarkAllNotificationsReadResponse']
+// Snapshot / Tag / Template / Search / Audit / Governance / Observability / SSO / Org
+// 从 Real 契约引用（fallback 到手动定义）
 
 export interface SnapshotItem {
     snapshotId: string
@@ -90,10 +82,7 @@ export interface SearchPageItem {
 }
 
 export interface SearchPageRes {
-    data: {
-        items: SearchPageItem[]
-        nextCursor: string | null
-    }
+    data: { items: SearchPageItem[]; nextCursor: string | null }
 }
 
 export interface AiChatPayload {
@@ -102,10 +91,7 @@ export interface AiChatPayload {
 }
 
 export interface AiChatRes {
-    data: {
-        blocks: PartialBlock[]
-        conversationId: string
-    }
+    data: { blocks: PartialBlock[]; conversationId: string }
 }
 
 export interface SsoProvider {
@@ -114,18 +100,11 @@ export interface SsoProvider {
 }
 
 export interface SsoStartRes {
-    data: {
-        provider: string
-        code: string
-        authorizeUrl: string
-    }
+    data: { provider: string; code: string; authorizeUrl: string }
 }
 
 export interface SsoCallbackRes {
-    data: {
-        access_token: string
-        user: User
-    }
+    data: { access_token: string; user: User }
 }
 
 export interface OrgDepartment {
@@ -147,19 +126,11 @@ export interface OrgUserMapping {
 }
 
 export interface OrgMappingRes {
-    data: {
-        departments: OrgDepartment[]
-        roleMappings: OrgRoleMapping[]
-        users: OrgUserMapping[]
-    }
+    data: { departments: OrgDepartment[]; roleMappings: OrgRoleMapping[]; users: OrgUserMapping[] }
 }
 
-export type AuditEventItem = ContractSchemas['AuditEventItem']
-
-export type AuditEventsRes = ContractSchemas['AuditEventsResponse']
-
-export type AuditStatsRes = ContractSchemas['AuditStatsResponse']
-
-export type RetentionPolicy = ContractSchemas['RetentionPolicy']
-
-export type ObservabilityDashboardRes = ContractSchemas['ObservabilityDashboardResponse']
+export type AuditEventItem = MockSchemas['AuditEventItem']
+export type AuditEventsRes = MockSchemas['AuditEventsResponse']
+export type AuditStatsRes = MockSchemas['AuditStatsResponse']
+export type RetentionPolicy = MockSchemas['RetentionPolicy']
+export type ObservabilityDashboardRes = MockSchemas['ObservabilityDashboardResponse']

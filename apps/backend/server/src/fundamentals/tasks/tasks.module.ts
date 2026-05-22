@@ -1,15 +1,12 @@
-/*
- *   Copyright (c) 2024 妙码学院 @Heyi
- *   All rights reserved.
- *   妙码学院官方出品，作者 @Heyi，供学员学习使用，可用作练习，可用作美化简历，不可开源。
- */
-import { Module } from '@nestjs/common'
+﻿import { Module } from '@nestjs/common'
 
+import { AuditModule } from '../../modules/audit/audit.module'
+import { GovernanceModule } from '../../modules/governance/governance.module'
 import { PageModule } from '../../modules/page/page.module'
 import { TasksService } from './tasks.service'
 
 @Module({
-    imports: [PageModule],
+    imports: [PageModule, GovernanceModule, AuditModule],
     providers: [TasksService],
 })
 export class TasksModule {}

@@ -26,9 +26,10 @@
         "typecheck:apps": "pnpm --filter @miaoma-doc/server typecheck && pnpm --filter @miaoma-doc/web typecheck",
         "lint:apps": "pnpm --filter @miaoma-doc/server lint && pnpm --filter @miaoma-doc/web lint",
         "test:apps": "pnpm --filter @miaoma-doc/server test && pnpm --filter @miaoma-doc/web test:unit",
-        "contract:apps": "pnpm --filter @miaoma-doc/web contract:lint && pnpm --filter @miaoma-doc/web contract:typegen && pnpm --filter @miaoma-doc/web contract:test",
+        "contract:apps": "pnpm --filter @miaoma-doc/web contract:lint && pnpm --filter @miaoma-doc/web contract:typegen && pnpm --filter @miaoma-doc/web contract:test && pnpm --filter @miaoma-doc/web contract:real:lint && pnpm --filter @miaoma-doc/web contract:real:typegen && pnpm --filter @miaoma-doc/web contract:real:test",
         "gate:apps": "pnpm lint:apps && pnpm typecheck:apps && pnpm test:apps",
         "gate:extended": "pnpm --filter @miaoma-doc/web test:collab && pnpm --filter @miaoma-doc/web test:e2e",
+    "gate:extended:real": "pnpm --filter @miaoma-doc/web test:collab && pnpm --filter @miaoma-doc/web test:e2e:real",
         "commit": "git-cz",
         "prepare": "husky"
     },

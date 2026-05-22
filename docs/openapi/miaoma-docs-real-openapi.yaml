@@ -1,0 +1,842 @@
+﻿openapi: 3.0.3
+info:
+  title: Miaoma Docs Real Backend Contract
+  version: 2.0.0
+  description: 真实后端 API 契约，覆盖 auth/user/page/comment/notification/search/tag/template/snapshot/audit/governance/observability/sso/org
+servers:
+  - url: /api
+security:
+  - bearerAuth: []
+tags:
+  - name: auth
+  - name: user
+  - name: page
+  - name: comment
+  - name: notification
+  - name: search
+  - name: tag
+  - name: template
+  - name: audit
+  - name: governance
+  - name: observability
+  - name: sso
+  - name: org
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    PageIdPath:
+      name: pageId
+      in: path
+      required: true
+      schema:
+        type: string
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Forbidden:
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [success, message]
+      properties:
+        success:
+          type: boolean
+          enum: [false]
+        message:
+          type: string
+
+    BooleanResponse:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+
+    LoginPayload:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+
+    LoginResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        data:
+          type: object
+          required: [access_token]
+          properties:
+            access_token:
+              type: string
+
+    RegisterPayload:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+
+    RegisterResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        data:
+          $ref: '#/components/schemas/User'
+
+    User:
+      type: object
+      required: [id, username]
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        email:
+          type: string
+          nullable: true
+
+    CurrentUserResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/User'
+
+    UserListResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+
+    PageItem:
+      type: object
+      required: [pageId, title, emoji, createdAt, updatedAt]
+      properties:
+        pageId:
+          type: string
+        title:
+          type: string
+        emoji:
+          type: string
+        description:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        deletedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    CreatePagePayload:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+        emoji:
+          type: string
+
+    UpdatePagePayload:
+      type: object
+      required: [pageId]
+      properties:
+        pageId:
+          type: string
+        title:
+          type: string
+        emoji:
+          type: string
+        description:
+          type: string
+          nullable: true
+
+    SnapshotItem:
+      type: object
+      required: [snapshotId, title, reason, createdAt]
+      properties:
+        snapshotId:
+          type: string
+        title:
+          type: string
+        reason:
+          type: string
+          enum: [manual, before_restore]
+        createdAt:
+          type: string
+          format: date-time
+        expireAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdBy:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: integer
+            username:
+              type: string
+
+    TagItem:
+      type: object
+      required: [tagId, name]
+      properties:
+        tagId:
+          type: string
+        name:
+          type: string
+
+    TemplateItem:
+      type: object
+      required: [templateId, name, emoji, title, createdAt]
+      properties:
+        templateId:
+          type: string
+        name:
+          type: string
+        emoji:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    CommentItem:
+      type: object
+      required: [commentId, content, createdAt]
+      properties:
+        commentId:
+          type: string
+        content:
+          type: string
+        author:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: integer
+            username:
+              type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    NotificationItem:
+      type: object
+      required: [notificationId, type, title, createdAt]
+      properties:
+        notificationId:
+          type: string
+        type:
+          type: string
+        title:
+          type: string
+        content:
+          type: string
+        readAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    SearchPageItem:
+      type: object
+      required: [pageId, title]
+      properties:
+        pageId:
+          type: string
+        title:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+
+    AuditEventItem:
+      type: object
+      required: [eventId, type, summary, createdAt]
+      properties:
+        eventId:
+          type: string
+        type:
+          type: string
+        actorUserId:
+          type: integer
+          nullable: true
+        targetType:
+          type: string
+        targetId:
+          type: string
+          nullable: true
+        summary:
+          type: string
+        meta:
+          type: object
+          additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time
+
+    RetentionPolicy:
+      type: object
+      required: [snapshotDays, trashDays, auditDays]
+      properties:
+        snapshotDays:
+          type: integer
+        trashDays:
+          type: integer
+        auditDays:
+          type: integer
+
+    SsoProvider:
+      type: object
+      required: [key, name]
+      properties:
+        key:
+          type: string
+          enum: [wechat-work, dingtalk]
+        name:
+          type: string
+
+    OrgDepartment:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+
+    OrgRoleMapping:
+      type: object
+      required: [position, defaultRole]
+      properties:
+        position:
+          type: string
+        defaultRole:
+          type: string
+
+    OrgUserMapping:
+      type: object
+      required: [userId, username, defaultRole]
+      properties:
+        userId:
+          type: integer
+        username:
+          type: string
+        departmentId:
+          type: string
+          nullable: true
+        position:
+          type: string
+          nullable: true
+        defaultRole:
+          type: string
+
+paths:
+  /auth/login:
+    post:
+      tags: [auth]
+      summary: 登录
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginPayload'
+      responses:
+        '200':
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+
+  /auth/logout:
+    post:
+      tags: [auth]
+      summary: 登出
+      responses:
+        '200':
+          description: 登出成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BooleanResponse'
+
+  /currentUser:
+    get:
+      tags: [auth]
+      summary: 当前用户
+      responses:
+        '200':
+          description: 当前用户信息
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentUserResponse'
+
+  /user/register:
+    post:
+      tags: [user]
+      summary: 注册
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterPayload'
+      responses:
+        '200':
+          description: 注册成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisterResponse'
+
+  /user/list:
+    get:
+      tags: [user]
+      summary: 用户列表
+      responses:
+        '200':
+          description: 用户列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserListResponse'
+
+  /page:
+    get:
+      tags: [page]
+      summary: 页面列表
+      responses:
+        '200':
+          description: 页面列表
+    post:
+      tags: [page]
+      summary: 创建页面
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePagePayload'
+      responses:
+        '200':
+          description: 创建成功
+    put:
+      tags: [page]
+      summary: 更新页面
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePagePayload'
+      responses:
+        '200':
+          description: 更新成功
+
+  /page/{pageId}:
+    get:
+      tags: [page]
+      summary: 页面详情
+      parameters:
+        - $ref: '#/components/parameters/PageIdPath'
+      responses:
+        '200':
+          description: 页面详情
+
+  /page/{pageId}/tags:
+    get:
+      tags: [tag]
+      summary: 页面标签
+      parameters:
+        - $ref: '#/components/parameters/PageIdPath'
+      responses:
+        '200':
+          description: 标签列表
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TagItem'
+    put:
+      tags: [tag]
+      summary: 更新页面标签
+      parameters:
+        - $ref: '#/components/parameters/PageIdPath'
+      responses:
+        '200':
+          description: 更新成功
+
+  /page/{pageId}/snapshots:
+    get:
+      tags: [page]
+      summary: 快照列表
+      parameters:
+        - $ref: '#/components/parameters/PageIdPath'
+      responses:
+        '200':
+          description: 快照列表
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SnapshotItem'
+    post:
+      tags: [page]
+      summary: 创建快照
+      parameters:
+        - $ref: '#/components/parameters/PageIdPath'
+      responses:
+        '200':
+          description: 创建成功
+
+  /page/{pageId}/snapshots/{snapshotId}/restore:
+    post:
+      tags: [page]
+      summary: 恢复快照
+      parameters:
+        - $ref: '#/components/parameters/PageIdPath'
+        - name: snapshotId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 恢复成功
+
+  /page/{pageId}/comments:
+    get:
+      tags: [comment]
+      summary: 评论列表
+      parameters:
+        - $ref: '#/components/parameters/PageIdPath'
+      responses:
+        '200':
+          description: 评论列表
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CommentItem'
+    post:
+      tags: [comment]
+      summary: 创建评论
+      parameters:
+        - $ref: '#/components/parameters/PageIdPath'
+      responses:
+        '200':
+          description: 创建成功
+
+  /notifications:
+    get:
+      tags: [notification]
+      summary: 通知列表
+      responses:
+        '200':
+          description: 通知列表
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [unreadCount, items]
+                properties:
+                  unreadCount:
+                    type: integer
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/NotificationItem'
+
+  /search/pages:
+    get:
+      tags: [search]
+      summary: 搜索页面
+      responses:
+        '200':
+          description: 搜索结果
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [items, nextCursor]
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/SearchPageItem'
+                      nextCursor:
+                        type: string
+                        nullable: true
+
+  /tags:
+    get:
+      tags: [tag]
+      summary: 全局标签
+      responses:
+        '200':
+          description: 标签列表
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TagItem'
+
+  /templates:
+    get:
+      tags: [template]
+      summary: 模板列表
+      responses:
+        '200':
+          description: 模板列表
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TemplateItem'
+
+  /audit/events:
+    get:
+      tags: [audit]
+      summary: 审计事件
+      responses:
+        '200':
+          description: 审计事件列表
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: object
+                    required: [items, nextCursor]
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/AuditEventItem'
+                      nextCursor:
+                        type: string
+                        nullable: true
+
+  /audit/stats:
+    get:
+      tags: [audit]
+      summary: 审计统计
+      responses:
+        '200':
+          description: 审计统计
+
+  /governance/retention:
+    get:
+      tags: [governance]
+      summary: 获取留存策略
+      responses:
+        '200':
+          description: 留存策略
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: '#/components/schemas/RetentionPolicy'
+    put:
+      tags: [governance]
+      summary: 更新留存策略
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RetentionPolicy'
+      responses:
+        '200':
+          description: 更新成功
+
+  /observability/dashboard:
+    get:
+      tags: [observability]
+      summary: 可观测面板
+      responses:
+        '200':
+          description: 面板数据
+
+  /sso/providers:
+    get:
+      tags: [sso]
+      summary: SSO 提供商
+      responses:
+        '200':
+          description: 提供商列表
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SsoProvider'
+
+  /sso/simulate/start:
+    post:
+      tags: [sso]
+      summary: 开始 SSO 模拟
+      responses:
+        '200':
+          description: 模拟码
+
+  /sso/simulate/callback:
+    post:
+      tags: [sso]
+      summary: SSO 回调
+      responses:
+        '200':
+          description: 回调结果
+
+  /org/mappings:
+    get:
+      tags: [org]
+      summary: 组织映射
+      responses:
+        '200':
+          description: 组织映射数据
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: object
+                    required: [departments, roleMappings, users]
+                    properties:
+                      departments:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/OrgDepartment'
+                      roleMappings:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/OrgRoleMapping'
+                      users:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/OrgUserMapping'
+    put:
+      tags: [org]
+      summary: 更新组织映射
+      responses:
+        '200':
+          description: 更新成功

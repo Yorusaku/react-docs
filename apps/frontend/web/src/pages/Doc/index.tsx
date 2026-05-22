@@ -9,6 +9,7 @@ import { Link, useParams } from 'react-router-dom'
 import { WebsocketProvider } from 'y-websocket'
 import * as Y from 'yjs'
 
+import { GovernanceDrawer } from '@/components/GovernanceDrawer'
 import { SharePopover } from '@/components/SharePopover'
 import * as srv from '@/services'
 import { debounce } from '@/utils/debounce'
@@ -186,9 +187,10 @@ export const Doc = () => {
                     {remoteUsers.size > 0 && <AvatarList remoteUsers={remoteUsers} />}
                     {page?.pageId && (
                         <Button asChild size="sm" variant="outline">
-                            <Link to={`/doc/${page.pageId}/acl`}>权限</Link>
+                            <Link to={`/doc/${page.pageId}/acl`}>閺夊啴妾?/Link>
                         </Button>
                     )}
+                    <GovernanceDrawer pageId={page?.pageId ?? ""} canWrite={true} canTemplateManage={true} canRestore={true} />
                     <SharePopover pageId={page?.pageId} />
                 </div>
             </header>

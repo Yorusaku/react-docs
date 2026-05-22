@@ -1,16 +1,18 @@
-import { Injectable } from '@nestjs/common'
+﻿import { Injectable } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { nanoid } from 'nanoid'
 import { Repository } from 'typeorm'
 
 import { NotificationEntity } from '../../entities/notification.entity'
 import { UserEntity } from '../../entities/user.entity'
+import { AuditService } from '../audit/audit.service'
 
 @Injectable()
 export class NotificationService {
     constructor(
         @InjectRepository(NotificationEntity)
-        private readonly notificationRepository: Repository<NotificationEntity>
+        private readonly notificationRepository: Repository<NotificationEntity>,
+        private readonly auditService: AuditService,
     ) {}
 
     async list(userId: number) {
@@ -22,22 +24,21 @@ export class NotificationService {
         const unreadCount = await this.notificationRepository.count({
             where: { user: { id: userId }, readAt: null },
         })
-
-        return {
-            unreadCount,
-            items: rows,
-        }
+        return { unreadCount, items: rows }
     }
 
     async markRead(notificationId: string, userId: number) {
         const row = await this.notificationRepository.findOne({
             where: { notificationId, user: { id: userId } },
         })
-        if (!row) {
-            return { notificationId, success: false }
-        }
+        if (!row) return { notificationId, success: false }
         row.readAt = row.readAt ?? new Date()
         await this.notificationRepository.save(row)
+
+        await this.auditService.emit({
+            type: 'notification_read', summary: '通知已读', actorUserId: userId,
+            targetType: 'notification', targetId: notificationId,
+        })
         return { notificationId, success: true }
     }
 
@@ -50,39 +51,29 @@ export class NotificationService {
             .andWhere('"readAt" IS NULL')
             .execute()
 
+        await this.auditService.emit({
+            type: 'notification_read_all', summary: '全部通知已读', actorUserId: userId,
+            targetType: 'notification',
+        })
         return { success: true }
     }
 
     async createMentionNotifications(payload: {
-        pageId: string
-        fromUserId: number
-        commentId: string
-        mentionUserIds: number[]
-        content: string
+        pageId: string; fromUserId: number; commentId: string; mentionUserIds: number[]; content: string
     }) {
         const mentionUserIds = Array.from(new Set(payload.mentionUserIds)).filter(id => id !== payload.fromUserId)
-        if (mentionUserIds.length === 0) {
-            return
-        }
+        if (mentionUserIds.length === 0) return
 
         const rows = mentionUserIds.map(userId => {
             const user = new UserEntity()
             user.id = userId
-
             return this.notificationRepository.create({
-                notificationId: 'notice' + nanoid(8),
-                user,
-                type: 'comment_mention',
-                title: '你被提及了',
+                notificationId: 'notice' + nanoid(8), user,
+                type: 'comment_mention', title: '你被提及了',
                 content: payload.content.slice(0, 300),
-                payload: {
-                    pageId: payload.pageId,
-                    commentId: payload.commentId,
-                    fromUserId: payload.fromUserId,
-                },
+                payload: { pageId: payload.pageId, commentId: payload.commentId, fromUserId: payload.fromUserId },
             })
         })
-
         await this.notificationRepository.save(rows)
     }
 }

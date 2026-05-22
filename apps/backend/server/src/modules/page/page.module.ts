@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common'
+﻿import { Module } from '@nestjs/common'
 import { TypeOrmModule } from '@nestjs/typeorm'
 
 import { PageEntity } from '../../entities/page.entity'
@@ -8,6 +8,8 @@ import { PageSnapshotEntity } from '../../entities/page-snapshot.entity'
 import { PageTagEntity } from '../../entities/page-tag.entity'
 import { SearchIndexJobEntity } from '../../entities/search-index-job.entity'
 import { TagEntity } from '../../entities/tag.entity'
+import { AuditModule } from '../audit/audit.module'
+import { GovernanceModule } from '../governance/governance.module'
 import { PageController } from './page.controller'
 import { PageService } from './page.service'
 import { PageAccessService } from './page-access.service'
@@ -23,6 +25,8 @@ import { PageAccessService } from './page-access.service'
             SearchIndexJobEntity,
             PageSearchIndexEntity,
         ]),
+        GovernanceModule,
+        AuditModule,
     ],
     controllers: [PageController],
     providers: [PageService, PageAccessService],

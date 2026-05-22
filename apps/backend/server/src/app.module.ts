@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common'
+﻿import { Module } from '@nestjs/common'
 import { ConfigModule, ConfigService } from '@nestjs/config'
 import { ScheduleModule } from '@nestjs/schedule'
 import { ThrottlerModule } from '@nestjs/throttler'
@@ -11,12 +11,17 @@ import { TasksModule } from './fundamentals/tasks/tasks.module'
 import { YjsPostgresqlModule } from './fundamentals/yjs-postgresql/yjs-postgresql.module'
 import { AiModule } from './modules/ai/ai.module'
 import { ApplicationModule } from './modules/application/application.module'
+import { AuditModule } from './modules/audit/audit.module'
 import { AuthModule } from './modules/auth/auth.module'
 import { CommentModule } from './modules/comment/comment.module'
 import { DocYjsModule } from './modules/doc-yjs/doc-yjs.module'
+import { GovernanceModule } from './modules/governance/governance.module'
 import { NotificationModule } from './modules/notification/notification.module'
+import { ObservabilityModule } from './modules/observability/observability.module'
+import { OrgModule } from './modules/org/org.module'
 import { PageModule } from './modules/page/page.module'
 import { SearchModule } from './modules/search/search.module'
+import { SsoModule } from './modules/sso/sso.module'
 import { TagModule } from './modules/tag/tag.module'
 import { TemplateModule } from './modules/template/template.module'
 import { UserModule } from './modules/user/user.module'
@@ -42,6 +47,11 @@ import { UserModule } from './modules/user/user.module'
         NotificationModule,
         CommentModule,
         AiModule,
+        AuditModule,
+        GovernanceModule,
+        ObservabilityModule,
+        SsoModule,
+        OrgModule,
         TasksModule,
         YjsPostgresqlModule.forRoot(),
         HealthModule,
