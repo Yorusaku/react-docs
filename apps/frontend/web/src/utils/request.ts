@@ -7,19 +7,13 @@ const config: CreateAxiosDefaults = {
     timeout: 5000,
 }
 
-const apiMode = (import.meta.env.VITE_API_MODE ?? 'real').toLowerCase()
+const apiMode = (import.meta.env.VITE_API_MODE || 'real').toLowerCase()
 
 export const getApiMode = () => apiMode
 
 // Real 模式下后端尚未实现的路径前缀。对这些路径的失败请求统一返回
 // `"后端未启用/能力未部署"`，避免静默走 mock 或产生误导性错误。
-const REAL_MODE_NOT_IMPLEMENTED_PREFIXES = [
-    '/audit',
-    '/governance',
-    '/observability',
-    '/sso',
-    '/org',
-]
+const REAL_MODE_NOT_IMPLEMENTED_PREFIXES = ['/audit', '/governance', '/observability', '/sso', '/org']
 
 const isRealModeNotImplementedPath = (url?: string) => {
     if (apiMode !== 'real') return false

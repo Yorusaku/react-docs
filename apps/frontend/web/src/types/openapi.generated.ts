@@ -347,6 +347,104 @@ export interface paths {
         patch?: never
         trace?: never
     }
+    '/page/{pageId}/access': {
+        parameters: {
+            query?: never
+            header?: never
+            path?: never
+            cookie?: never
+        }
+        /** Get current user's page permissions */
+        get: {
+            parameters: {
+                query?: never
+                header?: never
+                path: {
+                    pageId: components['parameters']['PageIdPath']
+                }
+                cookie?: never
+            }
+            requestBody?: never
+            responses: {
+                /** @description Page access */
+                200: {
+                    headers: {
+                        [name: string]: unknown
+                    }
+                    content: {
+                        'application/json': {
+                            success: boolean
+                            data: {
+                                role: string
+                                canWrite: boolean
+                                canShare: boolean
+                                canTemplateManage: boolean
+                                canRestore: boolean
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        put?: never
+        post?: never
+        delete?: never
+        options?: never
+        head?: never
+        patch?: never
+        trace?: never
+    }
+    '/ai/rewrite': {
+        parameters: {
+            query?: never
+            header?: never
+            path?: never
+            cookie?: never
+        }
+        get?: never
+        put?: never
+        /** Rewrite selected text */
+        post: {
+            parameters: {
+                query?: never
+                header?: never
+                path?: never
+                cookie?: never
+            }
+            requestBody: {
+                content: {
+                    'application/json': {
+                        pageId: string
+                        /** @enum {string} */
+                        action: 'polish' | 'shorten'
+                        text: string
+                    }
+                }
+            }
+            responses: {
+                /** @description Rewrite result */
+                200: {
+                    headers: {
+                        [name: string]: unknown
+                    }
+                    content: {
+                        'application/json': {
+                            success: boolean
+                            data: {
+                                text: string
+                            }
+                        }
+                    }
+                }
+                403: components['responses']['Forbidden']
+            }
+        }
+        delete?: never
+        options?: never
+        head?: never
+        patch?: never
+        trace?: never
+    }
     '/page/{pageId}/acl': {
         parameters: {
             query?: never

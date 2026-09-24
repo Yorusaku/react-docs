@@ -1,6 +1,6 @@
-import { AiChatPayload, AiChatRes } from '@/types/api'
+import { AiRewritePayload, AiRewriteRes } from '@/types/api'
 import { request } from '@/utils/request'
 
-export const aiChat = async (data: AiChatPayload): Promise<AiChatRes> => {
-    return await request.post('/ai/chat', data)
+export const aiRewrite = async (data: AiRewritePayload): Promise<AiRewriteRes> => {
+    return await request.post('/ai/rewrite', data)
 }

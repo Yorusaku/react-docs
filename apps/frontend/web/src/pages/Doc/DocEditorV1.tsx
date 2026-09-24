@@ -192,8 +192,7 @@ export function DocEditor(props: DocEditorProps) {
             <SuggestionMenuController
                 triggerCharacter="@"
                 getItems={async query => {
-                    // @ts-expect-error getItems type
-                    return filterSuggestionItems(getMentionMenuItems(editor, page?.id), query)
+                    return filterSuggestionItems(getMentionMenuItems(editor as unknown as MiaomaDocEditor, page?.id), query)
                 }}
             />
         </MiaomaDocView>

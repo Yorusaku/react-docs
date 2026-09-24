@@ -1,18 +1,17 @@
-import { Injectable, BadRequestException } from '@nestjs/common'
+import { BadRequestException, Injectable } from '@nestjs/common'
 import { JwtService } from '@nestjs/jwt'
 import { InjectRepository } from '@nestjs/typeorm'
 import { nanoid } from 'nanoid'
 import { Repository } from 'typeorm'
 
-import { UserEntity } from '../../../entities/user.entity'
-import { SsoSimulationCodeEntity } from '../../../entities/sso-simulation.entity'
-import { AuditService } from '../../audit/audit.service'
+import { SsoSimulationCodeEntity } from '../../entities/sso-simulation.entity'
+import { UserEntity } from '../../entities/user.entity'
+import { AuditService } from '../audit/audit.service'
 
 const PROVIDERS = [
     { key: 'wechat-work' as const, name: '企业微信' },
     { key: 'dingtalk' as const, name: '钉钉' },
 ]
-
 
 @Injectable()
 export class SsoService {
@@ -22,7 +21,7 @@ export class SsoService {
         @InjectRepository(UserEntity)
         private readonly userRepo: Repository<UserEntity>,
         private readonly jwtService: JwtService,
-        private readonly auditService: AuditService,
+        private readonly auditService: AuditService
     ) {}
 
     async getProviders() {
@@ -38,9 +37,15 @@ export class SsoService {
         const simulatedUserId = `${provider}_user_${nanoid(8)}`
         const expiresAt = new Date(Date.now() + 5 * 60 * 1000) // 5 分钟过期
 
-        await this.codeRepo.save(this.codeRepo.create({
-            code, provider, simulatedUserId, expiresAt, used: false,
-        }))
+        await this.codeRepo.save(
+            this.codeRepo.create({
+                code,
+                provider,
+                simulatedUserId,
+                expiresAt,
+                used: false,
+            })
+        )
 
         return {
             code,
@@ -64,10 +69,12 @@ export class SsoService {
         const username = record.simulatedUserId
         let user = await this.userRepo.findOne({ where: { username } })
         if (!user) {
-            user = await this.userRepo.save(this.userRepo.create({
-                username,
-                password: 'sso_simulated',
-            }))
+            user = await this.userRepo.save(
+                this.userRepo.create({
+                    username,
+                    password: 'sso_simulated',
+                })
+            )
         }
 
         const token = this.jwtService.sign({ sub: user.id, username: user.username })

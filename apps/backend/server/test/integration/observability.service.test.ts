@@ -1,46 +1,35 @@
-﻿import { join } from 'node:path'
-
 import { Test, TestingModule } from '@nestjs/testing'
 import { TypeOrmModule } from '@nestjs/typeorm'
-import { nanoid } from 'nanoid'
-import { DataSource, Repository } from 'typeorm'
+import { DataSource } from 'typeorm'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
-import { UserEntity } from '../../src/entities/user.entity'
+import { AuditEventEntity } from '../../src/entities/audit-event.entity'
+import { NotificationEntity } from '../../src/entities/notification.entity'
+import { PageSearchIndexEntity } from '../../src/entities/page-search-index.entity'
+import { SearchIndexJobEntity } from '../../src/entities/search-index-job.entity'
 import { ObservabilityDashboardService } from '../../src/modules/observability/observability-dashboard.service'
+import { integrationTypeOrmOptions, resetIntegrationTables } from './support/test-database'
 
-describe('ObservabilityDashboardService (RED)', () => {
+describe('ObservabilityDashboardService Integration', () => {
     let module: TestingModule
-    let ds: DataSource
     let observabilityService: ObservabilityDashboardService
-    let userRepo: Repository<UserEntity>
-
-    const testDb = process.env.PG_DATABASE_TEST ?? 'miaoma_test'
-    const pgHost = process.env.PG_HOST ?? 'localhost'
-    const pgPort = Number(process.env.PG_PORT ?? 5432)
-    const pgUser = process.env.PG_USER ?? 'postgres'
-    const pgPassword = process.env.PG_PASSWORD ?? 'postgres'
 
     beforeAll(async () => {
         module = await Test.createTestingModule({
             imports: [
-                TypeOrmModule.forRoot({
-                    type: 'postgres', host: pgHost, port: pgPort, username: pgUser,
-                    password: pgPassword, database: testDb,
-                    entities: [join(__dirname, '../../src', '**/**.entity{.ts,.js}')],
-                    synchronize: true,
-                }),
-                TypeOrmModule.forFeature([UserEntity]),
+                TypeOrmModule.forRoot(integrationTypeOrmOptions()),
+                TypeOrmModule.forFeature([SearchIndexJobEntity, PageSearchIndexEntity, NotificationEntity, AuditEventEntity]),
             ],
             providers: [ObservabilityDashboardService],
         }).compile()
 
-        ds = module.get(DataSource)
         observabilityService = module.get(ObservabilityDashboardService)
-        userRepo = ds.getRepository(UserEntity)
+        await resetIntegrationTables(module.get(DataSource), ['search_index_job', 'page_search_index', 'notification', 'audit_event'])
     })
 
-    afterAll(async () => { await module?.close() })
+    afterAll(async () => {
+        await module?.close()
+    })
 
     describe('getDashboard', () => {
         it('mode=real', async () => {

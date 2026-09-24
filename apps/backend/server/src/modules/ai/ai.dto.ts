@@ -1,10 +1,9 @@
 import { z } from 'zod'
 
-export const aiChatSchema = z
-    .object({
-        query: z.string().min(1).max(4000),
-        conversationId: z.string().optional().default(''),
-    })
-    .required()
+export const aiRewriteSchema = z.object({
+    pageId: z.string().min(1).max(80),
+    action: z.enum(['polish', 'shorten']),
+    text: z.string().trim().min(1).max(4000),
+})
 
-export type AiChatDto = z.infer<typeof aiChatSchema>
+export type AiRewriteDto = z.infer<typeof aiRewriteSchema>

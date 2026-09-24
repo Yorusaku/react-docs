@@ -174,13 +174,44 @@ const send = (doc: IWSSharedDoc, conn: any, m: Uint8Array) => {
 
 const pingTimeout = 30000
 
-export const setupWSConnection = (conn: any, req: any, { docName = req.url.slice(1).split('?')[0], gc = true } = {}) => {
+export const setupWSConnection = (
+    conn: any,
+    req: any,
+    {
+        docName = req.url.slice(1).split('?')[0],
+        gc = true,
+        canWrite = async () => true,
+        pendingMessages = [] as ArrayBuffer[],
+    }: { docName?: string; gc?: boolean; canWrite?: () => Promise<boolean>; pendingMessages?: ArrayBuffer[] } = {}
+) => {
     conn.binaryType = 'arraybuffer'
     // get doc, initialize if it does not exist yet
     const doc = getYDoc(docName, gc)
     doc.conns.set(conn, new Set())
     // listen and reply to events
-    conn.on('message', (message: ArrayBuffer) => messageListener(conn, doc, new Uint8Array(message)))
+    let pending = Promise.resolve()
+    const handleMessage = (message: ArrayBuffer) => {
+        const bytes = new Uint8Array(message)
+        pending = pending
+            .then(async () => {
+                if (!doc.conns.has(conn)) return
+                const decoder = decoding.createDecoder(bytes)
+                const type = decoding.readVarUint(decoder)
+                const isWrite = type === messageSync && decoding.readVarUint(decoder) !== 0
+                if (isWrite && !(await canWrite())) {
+                    conn.close(4003, 'Write permission required')
+                    return
+                }
+                messageListener(conn, doc, bytes)
+            })
+            .catch(error => Logger.error(error))
+    }
+    conn.on('message', handleMessage)
+    // 鉴权/ACL 校验是异步的，客户端可能在 open 后立刻发送数据包。
+    // 这些早到的消息由网关暂存，这里在挂好监听后按原顺序回放，避免丢失。
+    for (const message of pendingMessages) {
+        handleMessage(message)
+    }
 
     // Check if connection is still alive
     let pongReceived = true

@@ -16,6 +16,7 @@ tags:
   - name: governance
   - name: audit
   - name: observability
+  - name: ai
 paths:
   /auth/login:
     post:
@@ -177,6 +178,81 @@ paths:
                 $ref: '#/components/schemas/PageItemResponse'
         '404':
           $ref: '#/components/responses/NotFound'
+
+  /page/{pageId}/access:
+    get:
+      tags: [page]
+      summary: Get current user's page permissions
+      parameters:
+        - $ref: '#/components/parameters/PageIdPath'
+      responses:
+        '200':
+          description: Page access
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    required: [role, canWrite, canShare, canTemplateManage, canRestore]
+                    properties:
+                      role:
+                        type: string
+                      canWrite:
+                        type: boolean
+                      canShare:
+                        type: boolean
+                      canTemplateManage:
+                        type: boolean
+                      canRestore:
+                        type: boolean
+
+  /ai/rewrite:
+    post:
+      tags: [ai]
+      summary: Rewrite selected text
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [pageId, action, text]
+              properties:
+                pageId:
+                  type: string
+                  minLength: 1
+                  maxLength: 80
+                action:
+                  type: string
+                  enum: [polish, shorten]
+                text:
+                  type: string
+                  minLength: 1
+                  maxLength: 4000
+      responses:
+        '200':
+          description: Rewrite result
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    required: [text]
+                    properties:
+                      text:
+                        type: string
+        '403':
+          $ref: '#/components/responses/Forbidden'
 
   /page/{pageId}/acl:
     get:

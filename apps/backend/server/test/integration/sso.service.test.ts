@@ -1,45 +1,38 @@
-﻿import { join } from 'node:path'
-
+import { JwtModule } from '@nestjs/jwt'
 import { Test, TestingModule } from '@nestjs/testing'
 import { TypeOrmModule } from '@nestjs/typeorm'
-import { DataSource, Repository } from 'typeorm'
+import { DataSource } from 'typeorm'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
+import { AuditEventEntity } from '../../src/entities/audit-event.entity'
+import { SsoSimulationCodeEntity, SsoSimulationSessionEntity } from '../../src/entities/sso-simulation.entity'
 import { UserEntity } from '../../src/entities/user.entity'
+import { AuditService } from '../../src/modules/audit/audit.service'
+import { jwtConstants } from '../../src/modules/auth/constants'
 import { SsoService } from '../../src/modules/sso/sso.service'
+import { integrationTypeOrmOptions, resetIntegrationTables } from './support/test-database'
 
-describe('SsoService (RED)', () => {
+describe('SsoService Integration', () => {
     let module: TestingModule
-    let ds: DataSource
     let ssoService: SsoService
-    let userRepo: Repository<UserEntity>
-
-    const testDb = process.env.PG_DATABASE_TEST ?? 'miaoma_test'
-    const pgHost = process.env.PG_HOST ?? 'localhost'
-    const pgPort = Number(process.env.PG_PORT ?? 5432)
-    const pgUser = process.env.PG_USER ?? 'postgres'
-    const pgPassword = process.env.PG_PASSWORD ?? 'postgres'
 
     beforeAll(async () => {
         module = await Test.createTestingModule({
             imports: [
-                TypeOrmModule.forRoot({
-                    type: 'postgres', host: pgHost, port: pgPort, username: pgUser,
-                    password: pgPassword, database: testDb,
-                    entities: [join(__dirname, '../../src', '**/**.entity{.ts,.js}')],
-                    synchronize: true,
-                }),
-                TypeOrmModule.forFeature([UserEntity]),
+                TypeOrmModule.forRoot(integrationTypeOrmOptions()),
+                TypeOrmModule.forFeature([SsoSimulationCodeEntity, SsoSimulationSessionEntity, UserEntity, AuditEventEntity]),
+                JwtModule.register({ secret: jwtConstants.secret, signOptions: { expiresIn: '1 days' } }),
             ],
-            providers: [SsoService],
+            providers: [SsoService, AuditService],
         }).compile()
 
-        ds = module.get(DataSource)
         ssoService = module.get(SsoService)
-        userRepo = ds.getRepository(UserEntity)
+        await resetIntegrationTables(module.get(DataSource), ['sso_simulation_code', 'sso_simulation_session', 'audit_event', 'user'])
     })
 
-    afterAll(async () => { await module?.close() })
+    afterAll(async () => {
+        await module?.close()
+    })
 
     describe('getProviders', () => {
         it('返回 wechat-work 和 dingtalk', async () => {

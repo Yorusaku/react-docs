@@ -9,7 +9,7 @@ export class AuthService {
     constructor(
         private readonly jwtService: JwtService,
         private readonly userService: UserService,
-        private readonly auditService: AuditService,
+        private readonly auditService: AuditService
     ) {}
 
     async validateUser(username: string, pass: string) {
@@ -25,7 +25,11 @@ export class AuthService {
         if (!sub) throw new UnauthorizedException('invalid user payload')
 
         await this.auditService.emit({
-            type: 'login', summary: user.username + ' 登录', actorUserId: sub, targetType: 'auth', targetId: String(sub),
+            type: 'login',
+            summary: user.username + ' 登录',
+            actorUserId: sub,
+            targetType: 'auth',
+            targetId: String(sub),
         })
 
         const payload = { username: user.username, sub }
@@ -36,7 +40,11 @@ export class AuthService {
         const sub = user?.userId ?? user?.id
         if (sub) {
             await this.auditService.emit({
-                type: 'logout', summary: '用户登出', actorUserId: sub, targetType: 'auth', targetId: String(sub),
+                type: 'logout',
+                summary: '用户登出',
+                actorUserId: sub,
+                targetType: 'auth',
+                targetId: String(sub),
             })
         }
         return true

@@ -81,8 +81,7 @@ export function DocEditorDemo() {
             <SuggestionMenuController
                 triggerCharacter="@"
                 getItems={async query => {
-                    // @ts-expect-error getItems type
-                    return filterSuggestionItems(getMentionMenuItems(editor), query)
+                    return filterSuggestionItems(getMentionMenuItems(editor as unknown as MiaomaDocEditor), query)
                 }}
             />
         </MiaomaDocView>

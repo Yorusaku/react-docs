@@ -1,3 +1,61 @@
+# 妙码协同文档
+
+基于 pnpm workspace 的协同文档项目：Web 客户端使用 React、Vite，编辑器由 Tiptap/ProseMirror 和 Yjs 驱动，NestJS 服务提供业务 API、WebSocket 协同与 PostgreSQL 持久化。仓库供学习与项目实践使用，授权范围见 [LICENSE](LICENSE)；不要将代码按开源项目再发布。
+
+## 从哪里开始
+
+| 路径                                   | 职责                                       | 主要入口                                                       |
+| -------------------------------------- | ------------------------------------------ | -------------------------------------------------------------- |
+| `apps/frontend/web`                    | Web 页面、路由、HTTP 服务封装、Mock、测试  | `src/main.tsx`、`src/router/index.tsx`、`src/utils/request.ts` |
+| `apps/backend/server`                  | NestJS API、鉴权、业务模块、协同网关、迁移 | `src/main.ts`、`src/app.module.ts`、`src/modules/doc-yjs`      |
+| `apps/frontend/desktop`                | 复用 Web 构建产物的 Tauri 壳               | `src-tauri/tauri.conf.json`                                    |
+| `apps/backend/y-websocket-server-demo` | 独立的 WebSocket 示例，不是主协同服务      | `server.js`                                                    |
+| `packages/core`                        | 编辑器 Schema、块、命令和转换能力          | `src/index.ts`                                                 |
+| `packages/react`                       | 编辑器 React Hook 与视图控制器             | `src/index.ts`                                                 |
+| `packages/shadcn`                      | 编辑器 UI 组件                             | `src/index.tsx`                                                |
+| `packages/shadcn-shared-ui`            | Web 共享基础组件                           | `src/index.tsx`                                                |
+
+依赖主线是 `core -> react -> shadcn -> web`；`shadcn-shared-ui` 由 Web 直接使用。文档正文经 `WebsocketProvider -> /doc-yjs -> y-postgresql` 同步，页面元数据和治理功能经 `/api` 访问 NestJS。具体流程见下文第 5、6 章。
+
+## 本地运行
+
+需要 Node.js 20、pnpm 9.12.3；真实后端模式还需要 Docker Compose 或可用的 PostgreSQL。下列命令在仓库根目录运行。PowerShell 5.1 可逐行执行。
+
+### 前端 Mock 模式准备
+
+```powershell
+pnpm install
+Copy-Item -LiteralPath 'apps/frontend/web/.env.example' -Destination 'apps/frontend/web/.env'
+pnpm --filter '@miaoma-doc/web^...' build
+pnpm --filter @miaoma-doc/web dev
+```
+
+示例文件使用 `VITE_API_MODE=mock`。Web 依赖的三个编辑器包需要先构建；开发服务地址是 `http://localhost:5173`。Mock 仅替代 HTTP API，进入文档编辑页仍会尝试连接 WebSocket。**当前 Web 构建因 `src/pages/Doc/index.tsx:190` 的 JSX 语法错误而失败，页面不能据此视为可运行；须先修复该源码错误。**
+
+### 连接真实后端
+
+1. 执行 `pnpm docker:start` 启动 PostgreSQL。Compose 将容器的 5432 映射到本机 5433，示例数据库名为 `postgres`。
+2. 将 `apps/backend/server/.env.example` 复制为同目录 `.env`，让 `PG_*` 与本地数据库一致，并设置仅供本地使用、至少 16 字符的 `JWT_SECRET`。将 `apps/frontend/web/.env` 中的 `VITE_API_MODE` 改为 `real`。
+3. 迁移 CLI 直接读取当前终端的环境变量，不自动加载服务端 `.env`。在执行迁移的终端设置 `PG_HOST`、`PG_PORT`、`PG_USER`、`PG_PASSWORD`、`PG_DATABASE`，然后运行 `pnpm --filter @miaoma-doc/server migration:run`。
+4. 源码恢复可构建后，分别在两个终端执行 `pnpm dev:server` 和 `pnpm dev`。`pnpm dev` 只运行有 `dev` 脚本的 workspace 包，目前主要是 Web；后端需要单独启动。
+
+真实模式默认地址：Web `http://localhost:5173`，API `http://localhost:8082/api`，Swagger `http://localhost:8082/doc`，健康检查 `http://localhost:8082/api/health`。Vite 把 `/api` 代理到 `VITE_API_TARGET`（默认 `http://localhost:8082`）；WebSocket 使用 `VITE_WS_*` 配置，默认连接后端 8082 端口。Tauri 的 `devUrl` 指向 Web 的 5173 端口，因此桌面开发前也需先运行 Web。
+
+## 功能与验证
+
+Web 路由覆盖文档列表和编辑、权限、搜索、通知、回收站、图谱、审计、治理、可观测及 SSO 实验室。服务端已装配对应的审计、治理、可观测、SSO、组织模块；SSO 目前提供模拟流程，不应视为生产身份提供商集成。前端 `request.ts` 仍把部分真实模式接口的失败统一提示为“后端未启用”，遇到错误应结合响应和服务端日志判断。
+
+**当前验证状态：**已核对目录、脚本、路由、模块装配与环境变量，但 `pnpm build` 失败。服务端存在跨目录实体导入错误、控制器调用与服务方法不一致、`doc-yjs.gateway.ts:60` 引用未定义变量等编译错误；Web 的独立依赖构建可通过，Web 本体因上述 JSX 错误失败。下文描述的是源码中的设计与功能路径，不代表当前版本已通过构建或端到端验收。
+
+| 命令                                                | 范围                                                                    |
+| --------------------------------------------------- | ----------------------------------------------------------------------- |
+| `pnpm gate:apps`                                    | Web/Server lint、typecheck、单测                                        |
+| `pnpm contract:apps`                                | Mock 与真实 OpenAPI 契约 lint、类型生成、契约测试                       |
+| `pnpm --filter @miaoma-doc/server test:integration` | PostgreSQL 集成测试，需独立测试库                                       |
+| `pnpm gate:extended`                                | 协同专项与 Playwright E2E；协同测试需 `RUN_COLLAB_TESTS=1` 和可用的后端 |
+
+CI 主流程见 `.github/workflows/ci.yml`，扩展流程见 `.github/workflows/extended-quality.yml`。两份接口契约位于 `docs/openapi/`。以下是项目背景、架构和实现细节的详细解析。
+
 # 协同文档项目文档
 
 # 1. 需求背景介绍
@@ -77,7 +135,7 @@ Vitest + Playwright + OpenAPI contract + Turborepo + pnpm workspace + Docker Com
 # 8. 支持私有化部署与安全接入。
 
 -   页面元数据、权限数据、评论通知、模板快照和协同编辑数据都需要保存到企业可控的 PostgreSQL 中。
--   AI 能力需要通过服务端代理接入，避免把 `DIFY_API_KEY` 暴露到前端产物。
+-   AI 选区改写通过服务端代理接入，避免把 `AI_API_KEY` 暴露到前端产物。
 
 ## 1.6 技术需求
 
@@ -155,7 +213,7 @@ Vitest + Playwright + OpenAPI contract + Turborepo + pnpm workspace + Docker Com
 # 6. 契约与 Mock 演示体系。
 
 -   `docs/openapi/miaoma-docs-mock-openapi.yaml` 定义前端 Mock 与契约测试使用的 OpenAPI。
--   前端 `VITE_API_MODE=mock` 时由 `src/mocks/mock-server.ts` 承载审计、治理、可观测、SSO 等演示接口。
+-   前端 `VITE_API_MODE=mock` 时由 `src/mocks/mock-server.ts` 模拟 HTTP 接口；真实模式的审计、治理、可观测、SSO、组织接口也有对应 NestJS 控制器，实际能力边界以控制器和服务实现为准。
 
 # 7. 工程化与测试基础。
 
@@ -285,13 +343,13 @@ apps/frontend/desktop -> 复用 Web 能力做桌面端壳
 -   `NotificationsPage` 负责通知列表、单条已读和全部已读。
 -   `TrashPage` 负责软删除页面的恢复与永久删除。
 -   `DocGraph` 负责文档关系图谱可视化。
--   `AuditPage`、`GovernancePage`、`ObservabilityPage`、`SsoLabPage` 负责契约/Mock 演示场景。
+-   `AuditPage`、`GovernancePage`、`ObservabilityPage`、`SsoLabPage` 承载对应业务页面；Mock 模式用于本地演示，real 模式调用后端接口。
 
 # 4. 服务与状态层。
 
 -   `src/services/page.ts` 负责页面、回收站、ACL、标签、快照相关接口。
 -   `src/services/comment.ts`、`notification.ts`、`search.ts`、`tag.ts`、`template.ts`、`ai.ts` 负责治理类接口。
--   `src/services/audit.ts`、`governance.ts`、`observability.ts`、`sso.ts` 主要对应 Mock/OpenAPI 演示接口。
+-   `src/services/audit.ts`、`governance.ts`、`observability.ts`、`sso.ts` 在 Mock 和 real 模式下共用服务封装；real 模式由后端对应模块处理。
 -   `request.ts` 统一注入 `Authorization: Bearer` 请求头，并在 401 时跳转登录页。
 
 # 5. 编辑器接入层。
@@ -304,7 +362,7 @@ apps/frontend/desktop -> 复用 Web 能力做桌面端壳
 # 1. 启动与装配层。
 
 -   `main.ts` 负责应用创建、全局异常处理、WebSocket adapter、Swagger 和服务器启动。
--   `app.module.ts` 负责装配 `AuthModule`、`UserModule`、`ApplicationModule`、`DocYjsModule`、`PageModule`、`TagModule`、`TemplateModule`、`SearchModule`、`NotificationModule`、`CommentModule`、`AiModule`、`TasksModule`、`YjsPostgresqlModule`。
+-   `app.module.ts` 装配认证、用户、页面、标签、模板、搜索、通知、评论、AI、审计、治理、可观测、SSO、组织、定时任务与 Yjs 持久化等模块。
 
 # 2. 认证层。
 
@@ -331,8 +389,8 @@ apps/frontend/desktop -> 复用 Web 能力做桌面端壳
 -   `tasks.service.ts` 通过 `@Cron` 定时处理搜索索引任务和过期数据清理。
 -   `migrations/*` 负责数据库结构演进。
 -   `test/*` 负责密码、ACL、WS 鉴权等基础测试。
--   undamentals/observability/\* 负责健康检查、Prometheus 指标采集和 JSON 结构化日志。
--   undamentals/security/env.validation.ts 负责启动前环境变量 zod 校验。
+-   `fundamentals/observability/*` 负责健康检查、Prometheus 指标采集和 JSON 结构化日志。
+-   `fundamentals/security/env.validation.ts` 负责启动前环境变量 zod 校验。
 
 ## 5.6 核心数据流转
 
@@ -550,7 +608,7 @@ async processSearchIndexJobs() {
 ## 6.2 编辑器扩展机制
 
 -   `DocEditor.tsx` 通过 `MiaomaDocSchema.create()` 合并默认块、默认 inline 能力、mention 和 AI block。
--   mention 用于跨文档引用，AI block 用于服务端代理 Dify 后生成结构化内容。
+-   mention 用于跨文档引用；AI 首版只处理单块内的纯文本选区。
 -   Slash menu 和 `@` SuggestionMenu 都是通过扩展点接入，没有直接修改编辑器核心类。
     面试表达：这个项目里编辑器扩展不是把业务逻辑硬写到页面里，而是在 Schema 层注册自定义 inline 和 block。mention 负责文档引用，AI block 负责智能生成入口，页面只负责传入当前 pageId、Yjs 文档和 provider。这样后续增加新的块类型或菜单项时，改的是扩展点，而不是重写编辑器主流程。
     追问：为什么要把 mention 做成 inline content？
@@ -596,22 +654,12 @@ async processSearchIndexJobs() {
     追问：为什么恢复前还要再建一个快照？
     回答：恢复是破坏性操作，如果直接覆盖当前状态，用户发现恢复错了就没法回去。恢复前创建 `before_restore` 快照，相当于给恢复操作加了一层回退保障。
 
-## 6.7 AI 服务端代理
+## 6.7 AI 选区改写
 
--   前端不保存 Dify 密钥，所有 AI 请求统一走 `POST /api/ai/chat`。
--   后端通过 `DIFY_API_KEY` 和 `DIFY_API_BASE_URL` 调用上游。
--   `AiService` 对单用户做窗口限流，默认每分钟最多 20 次。
--   AI 调用会输出审计日志，包含用户、IP 和 query 长度。
-
-```ts
-private readonly windowMs = 60_000
-private readonly maxRequestPerWindow = 20
-const baseUrl = process.env.DIFY_API_BASE_URL ?? 'https://api.dify.ai'
-const apiKey = process.env.DIFY_API_KEY
-this.logger.log(`[AI_AUDIT] userId=${user.id} username=${user.username ?? ''} ip=${ip ?? ''} queryLength=${payload.query.length}`)
-```
-
-解析：AI 能力通过后端代理接入，核心收益是密钥不下发前端、上游错误可统一处理、限流和审计可以集中在服务端完成。
+-   文档页选中单个段落或标题中的纯文本后，可选“润色”或“精简”；结果先预览，点击“采用”后才替换。
+-   `POST /api/ai/rewrite` 只接收 `pageId`、`action` 和选区文本。服务端校验文档 `write` 权限、输入长度和模型输出，不传整篇文档。
+-   模型服务由服务端 `AI_API_BASE_URL`、`AI_MODEL`、`AI_API_KEY` 配置，使用兼容 Chat Completions 的非流式接口；单用户每分钟最多 20 次，调用超时为 20 秒。
+-   生成期间文档发生变化时，旧结果不得覆盖文档；服务端不记录选区正文或密钥。
 
 ## 6.8 契约、Mock 与扩展质量门禁
 
@@ -658,17 +706,14 @@ if (apiMode === 'mock') {
 
 # 7. 本地启动、脚本与排障
 
-## 7.1 最小可跑路径
+## 7.1 运行准备与当前阻塞
 
 ```bash
 pnpm install
 pnpm docker:start
-pnpm --filter @miaoma-doc/server migration:run
-pnpm dev:server
-pnpm dev
 ```
 
-解析：先启动 PostgreSQL，再执行 migration，最后分别启动后端和前端。后端默认端口 `8082`，HTTP API 前缀为 `/api`，Swagger 为 `/doc`。
+解析：复制 Web 与 Server 各自的 `.env.example` 到同目录 `.env`；真实模式请按本文开头“连接真实后端”设置前端模式和迁移终端的 `PG_*`。运行 migration 前确认目标是独立开发库。后端默认端口 `8082`，HTTP API 前缀为 `/api`，Swagger 为 `/doc`。
 
 ## 7.2 后端环境变量
 
@@ -680,11 +725,12 @@ PG_USER=postgres
 PG_PASSWORD=xiaoer
 PG_DATABASE=postgres
 SERVER_PORT=8082
-DIFY_API_KEY=replace-with-dify-key
-DIFY_API_BASE_URL=https://api.dify.ai
+AI_API_BASE_URL=https://ark.cn-beijing.volces.com/api/v3
+AI_MODEL=replace-with-endpoint-id
+AI_API_KEY=replace-with-rotated-key
 ```
 
-解析：`JWT_SECRET` 是必填项；不使用 AI 时可以不配置 `DIFY_API_KEY`，但调用 AI 接口会返回服务未配置错误。
+解析：以上数据库名与仓库 Compose 示例一致；`apps/backend/server/.env.example` 中的 `PG_DATABASE=miaoma_docs` 是另一个配置示例，使用前必须确认目标库已创建。`JWT_SECRET` 至少 16 字符；不使用 AI 时可不配置 `AI_*`，但调用改写接口会返回服务未配置错误。迁移 CLI 不自动读取此 `.env`。
 
 ## 7.3 前端环境变量
 
@@ -693,16 +739,15 @@ VITE_WS_PROTOCOL=ws
 VITE_WS_HOST=127.0.0.1
 VITE_WS_PORT=8082
 VITE_API_MODE=real
-RUN_COLLAB_TESTS=0
 ```
 
-解析：`VITE_API_MODE=real` 请求真实后端，`mock` 启用前端 Mock adapter。协同专项测试默认 skip，需要执行时设置 `RUN_COLLAB_TESTS=1` 并提供可用 WS 地址，必要时补充 `VITE_WS_TOKEN`。
+解析：`VITE_API_MODE=real` 请求真实后端，`mock` 启用前端 Mock adapter。示例 `.env.example` 设置为 `mock`，不创建 `.env` 时 `request.ts` 默认为 `real`。`RUN_COLLAB_TESTS` 是协同测试进程环境变量，专项测试默认 skip；执行时设置为 `1` 并提供可用 WS 地址及 token。Vite 的 HTTP 代理目标可通过 `VITE_API_TARGET` 覆盖。
 
 ## 7.4 常用脚本
 
 | 命令                                                | 作用                                                      |
 | --------------------------------------------------- | --------------------------------------------------------- |
-| `pnpm dev`                                          | 启动 workspace dev 任务                                   |
+| `pnpm dev`                                          | 启动有 dev 脚本的 workspace 包，目前主要是 Web            |
 | `pnpm dev:server`                                   | 启动 NestJS 后端 watch 模式                               |
 | `pnpm dev:desktop`                                  | 启动 Tauri 桌面端开发模式                                 |
 | `pnpm build`                                        | 运行 Turbo build                                          |
@@ -725,7 +770,7 @@ RUN_COLLAB_TESTS=0
 -   后端启动报 `JWT_SECRET is required`：检查 `apps/backend/server/.env` 是否存在并配置 `JWT_SECRET`。
 -   数据库连接失败或表不存在：确认 `pnpm docker:start` 已启动，`PG_PORT` 与 compose 映射一致，并执行 migration。
 -   前端能登录但协同连不上：检查 `VITE_WS_PROTOCOL`、`VITE_WS_HOST`、`VITE_WS_PORT`、后端端口和本地 token。
--   AI 接口返回未配置：检查 `DIFY_API_KEY` 是否配置在后端环境变量中。
+-   AI 接口返回未配置：检查服务端 `AI_API_BASE_URL`、`AI_MODEL` 和 `AI_API_KEY`。
 -   搜索结果不更新：等待定时任务处理索引队列，或检查后端日志中的 `[search-index]`。
 -   `test:e2e` 报浏览器缺失：执行 `pnpm --filter @miaoma-doc/web exec playwright install chromium`。
 -   协同测试被 skip：确认 `RUN_COLLAB_TESTS=1` 且 WS 地址已配置。
@@ -785,7 +830,7 @@ RUN_COLLAB_TESTS=0
 
 ## 9.5 如何实现私有化部署与数据安全？
 
--   回答思路：系统要能独立部署在企业自己的服务器环境中，当前项目通过 `JWT_SECRET`、`PG_*`、`SERVER_PORT`、`DIFY_*` 等环境变量完成关键配置。
+-   回答思路：系统要能独立部署在企业自己的服务器环境中，当前项目通过 `JWT_SECRET`、`PG_*`、`SERVER_PORT`、`AI_*` 等环境变量完成关键配置。
 -   回答思路：业务元数据、权限数据、评论通知和协同数据都进入企业自有 PostgreSQL，避免依赖外部 SaaS 存储。
 -   回答思路：文档系统至少要有登录鉴权能力，本项目基于 Passport、JWT 和 Bearer Token 提供认证机制，并在 WS 通道补了鉴权。
 -   回答思路：真实生产环境不应依赖 ORM 自动同步表结构，本项目已经改用 migration 管理表结构。
@@ -833,26 +878,29 @@ RUN_COLLAB_TESTS=0
 
 -   当前仓库是内部学习与项目实践用途，不作为开源商业发行声明。
 -   README 以代码仓库当前能力为准，后续功能变更时需要同步更新本文档。
--   当前 NestJS 后端真实控制器集中在认证、用户、页面、评论、通知、标签、模板、搜索和 AI；审计、治理、可观测、SSO 当前主要由前端页面、Mock 服务和 OpenAPI 契约承载。
+-   当前 NestJS 后端还包含审计、治理、可观测、SSO 模拟和组织映射控制器。Mock 模式供前端独立演示；real 模式的具体能力以实际控制器、服务和集成测试为准。
 
 ## 测试环境配置
 
 ### 环境变量
-| 变量 | 默认值 | 用途 |
-|------|--------|------|
-| VITE_API_MODE | real | mock(内置Mock)/real(直连后端) |
-| VITE_WS_PROTOCOL | ws | WebSocket协议 |
-| PG_DATABASE_TEST | miaoma_test | 集成测试库 |
-| JWT_SECRET | 需设置 | 至少16字符 |
-| RUN_COLLAB_TESTS | 0 | 协同测试开关 |
+
+| 变量             | 默认值                         | 用途                          |
+| ---------------- | ------------------------------ | ----------------------------- |
+| VITE_API_MODE    | 未设置时 real；示例文件为 mock | mock(内置Mock)/real(直连后端) |
+| VITE_WS_PROTOCOL | ws                             | WebSocket协议                 |
+| PG_DATABASE_TEST | miaoma_test                    | 集成测试库                    |
+| JWT_SECRET       | 需设置                         | 至少16字符                    |
+| RUN_COLLAB_TESTS | 0                              | 协同测试开关                  |
 
 ### Playwright
+
 pnpm --filter @miaoma-doc/web exec playwright install chromium
 
-### 新机器一键跑通
+### 新机器启动顺序（待构建问题修复后验证）
+
 1. pnpm install
 2. pnpm docker:start
-3. 复制 .env.example -> .env
-4. pnpm --filter @miaoma-doc/server migration:run
-5. pnpm dev
-6. pnpm gate:apps && pnpm contract:apps && pnpm gate:extended
+3. 分别复制 `apps/frontend/web/.env.example` 与 `apps/backend/server/.env.example` 到各自同目录 `.env`，并按上文核对数据库及模式
+4. 在迁移终端配置 `PG_*`，执行 `pnpm --filter @miaoma-doc/server migration:run`
+5. 分两个终端运行 `pnpm dev:server` 和 `pnpm dev`
+6. 运行 `pnpm gate:apps`、`pnpm contract:apps`；具备 Playwright 浏览器与协同测试环境时再运行 `pnpm gate:extended`

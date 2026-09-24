@@ -2,7 +2,7 @@
 info:
   title: Miaoma Docs Real Backend Contract
   version: 2.0.0
-  description: 真实后端 API 契约，覆盖 auth/user/page/comment/notification/search/tag/template/snapshot/audit/governance/observability/sso/org
+  description: 真实后端 API 契约，覆盖 auth/user/page/comment/notification/search/tag/template/snapshot/audit/governance/observability/sso/org/ai
 servers:
   - url: /api
 security:
@@ -21,6 +21,7 @@ tags:
   - name: observability
   - name: sso
   - name: org
+  - name: ai
 
 components:
   securitySchemes:
@@ -509,6 +510,90 @@ paths:
       responses:
         '200':
           description: 页面详情
+
+  /page/{pageId}/access:
+    get:
+      tags: [page]
+      summary: 查询当前用户的页面权限
+      parameters:
+        - $ref: '#/components/parameters/PageIdPath'
+      responses:
+        '200':
+          description: 当前用户权限
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    required: [role, canWrite, canShare, canTemplateManage, canRestore]
+                    properties:
+                      role:
+                        type: string
+                      canWrite:
+                        type: boolean
+                      canShare:
+                        type: boolean
+                      canTemplateManage:
+                        type: boolean
+                      canRestore:
+                        type: boolean
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /ai/rewrite:
+    post:
+      tags: [ai]
+      summary: 改写单个文本选区
+      description: 仅发送选区文本，要求当前用户具有页面 write 权限。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [pageId, action, text]
+              properties:
+                pageId:
+                  type: string
+                  minLength: 1
+                  maxLength: 80
+                action:
+                  type: string
+                  enum: [polish, shorten]
+                text:
+                  type: string
+                  minLength: 1
+                  maxLength: 4000
+      responses:
+        '200':
+          description: 改写结果
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    required: [text]
+                    properties:
+                      text:
+                        type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '502':
+          description: 模型服务或响应错误
+        '504':
+          description: 模型服务超时
 
   /page/{pageId}/tags:
     get:

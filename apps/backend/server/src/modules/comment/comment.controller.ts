@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Request, UseGuards, UsePipes } from '@nestjs/common'
+import { Body, Controller, Delete, Get, Param, Patch, Post, Request, UseGuards } from '@nestjs/common'
 import { AuthGuard } from '@nestjs/passport'
 
 import { ZodValidationPipe } from '../../pipes/zod-validation.pipe'
@@ -17,8 +17,11 @@ export class CommentController {
     }
 
     @Post('page/:pageId/comments')
-    @UsePipes(new ZodValidationPipe(createCommentSchema))
-    async create(@Param() params: { pageId: string }, @Body() body: CreateCommentDto, @Request() req: { user: { id: number } }) {
+    async create(
+        @Param() params: { pageId: string },
+        @Body(new ZodValidationPipe(createCommentSchema)) body: CreateCommentDto,
+        @Request() req: { user: { id: number } }
+    ) {
         const data = await this.commentService.create(params.pageId, req.user.id, {
             content: body.content ?? '',
             anchor: body.anchor ?? null,
@@ -29,8 +32,11 @@ export class CommentController {
     }
 
     @Patch('comments/:commentId')
-    @UsePipes(new ZodValidationPipe(updateCommentSchema))
-    async update(@Param() params: { commentId: string }, @Body() body: UpdateCommentDto, @Request() req: { user: { id: number } }) {
+    async update(
+        @Param() params: { commentId: string },
+        @Body(new ZodValidationPipe(updateCommentSchema)) body: UpdateCommentDto,
+        @Request() req: { user: { id: number } }
+    ) {
         const data = await this.commentService.update(params.commentId, req.user.id, body)
         return { data, success: true }
     }

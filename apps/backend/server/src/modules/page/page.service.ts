@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common'
+import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { nanoid } from 'nanoid'
 import { Repository } from 'typeorm'
@@ -24,11 +24,22 @@ const yFragmentNameByPageId = (pageId: string) => `document-store-` + pageId
 const DAY_MS = 24 * 60 * 60 * 1000
 
 const sanitizeTitle = (title: string) =>
-    Array.from(title).filter(char => { const code = char.charCodeAt(0); return code > 31 && code !== 127 }).join('').trim().slice(0, 255)
+    Array.from(title)
+        .filter(char => {
+            const code = char.charCodeAt(0)
+            return code > 31 && code !== 127
+        })
+        .join('')
+        .trim()
+        .slice(0, 255)
 
 const normalizeTagName = (tag: string) => tag.trim().slice(0, 80)
 const normalizeTagKey = (tag: string) => normalizeTagName(tag).toLowerCase()
-const stripXmlTags = (value: string) => value.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+const stripXmlTags = (value: string) =>
+    value
+        .replace(/<[^>]*>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
 
 @Injectable()
 export class PageService {
@@ -51,8 +62,13 @@ export class PageService {
         return new Date(Date.now() + policy.snapshotDays * DAY_MS)
     }
 
-    private normalizeOperations(operations: string[]) { const deduped = Array.from(new Set(operations.filter(isDocOperation))); return deduped as DocOperation[] }
-    private ensureRole(role: string): DocRole { return isDocRole(role) ? role : 'viewer' }
+    private normalizeOperations(operations: string[]) {
+        const deduped = Array.from(new Set(operations.filter(isDocOperation)))
+        return deduped as DocOperation[]
+    }
+    private ensureRole(role: string): DocRole {
+        return isDocRole(role) ? role : 'viewer'
+    }
     private async enqueueSearchIndex(pageId: number, reason: string) {
         const page = new PageEntity()
         page.id = pageId
@@ -66,7 +82,11 @@ export class PageService {
         const xml = ydoc.getXmlFragment(yFragmentNameByPageId(pageId)).toJSON()
         let rawLinks: unknown[] = []
         if (typeof xml === 'string' && xml.length > 0) {
-            try { rawLinks = yjsXmlMentionCollect(xml) } catch { rawLinks = [] }
+            try {
+                rawLinks = yjsXmlMentionCollect(xml)
+            } catch {
+                rawLinks = []
+            }
         }
         return rawLinks.filter((item): item is string => typeof item === 'string' && item.length > 0)
     }
@@ -78,12 +98,23 @@ export class PageService {
         return Buffer.from(update).toString('base64')
     }
 
-    private async createSnapshotInternal(payload: { page: PageEntity; createdById?: number; title?: string; reason: 'manual' | 'before_restore' }) {
+    private async createSnapshotInternal(payload: {
+        page: PageEntity
+        createdById?: number
+        title?: string
+        reason: 'manual' | 'before_restore'
+    }) {
         const updateBase64 = await this.encodeCurrentDocUpdate(payload.page.pageId)
         const snapshot = this.pageSnapshotRepository.create({
             snapshotId: 'snapshot' + nanoid(8),
             page: payload.page,
-            createdBy: payload.createdById ? (() => { const u = new UserEntity(); u.id = payload.createdById; return u })() : null,
+            createdBy: payload.createdById
+                ? (() => {
+                      const u = new UserEntity()
+                      u.id = payload.createdById
+                      return u
+                  })()
+                : null,
             title: payload.title ?? payload.page.title,
             reason: payload.reason,
             documentUpdate: updateBase64,
@@ -93,10 +124,17 @@ export class PageService {
     }
 
     async create(page: PageEntity, userId: number) {
+        page.title = sanitizeTitle(page.title)
         const saved = await this.pageRepository.save(page)
         await this.pageAccessService.createOwnerMember(saved, userId)
         await this.enqueueSearchIndex(saved.id, 'page_created')
-        await this.auditService.emit({ type: 'page_create', summary: saved.title, actorUserId: userId, targetType: 'page', targetId: saved.pageId })
+        await this.auditService.emit({
+            type: 'page_create',
+            summary: saved.title,
+            actorUserId: userId,
+            targetType: 'page',
+            targetId: saved.pageId,
+        })
         return saved
     }
 
@@ -111,15 +149,36 @@ export class PageService {
             .filter(p => p && !p.deletedAt)
             .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
         const unique = pages.filter((p, i, arr) => arr.findIndex(x => x.id === p.id) === i)
-        let count = unique.length
+        const count = unique.length
         return { pages: unique, count }
+    }
+
+    async listTrash(payload: { userId: number }) {
+        const members = await this.pageMemberRepository.find({ where: { user: { id: payload.userId } }, relations: ['page'] })
+        const pages = members.map(member => member.page).filter(page => !!page?.deletedAt)
+        return { pages, count: pages.length }
+    }
+
+    async fetch(payload: { pageId: string; userId: number }) {
+        return (await this.pageAccessService.assertAction(payload.pageId, payload.userId, 'read')).page
+    }
+
+    async graph(userId: number) {
+        const { pages } = await this.list({ userId })
+        return Promise.all(pages.map(async page => ({ ...page, links: await this.collectLinks(page.pageId) })))
     }
 
     async softDelete(payload: { pageId: string; userId: number }) {
         const { page } = await this.pageAccessService.assertAction(payload.pageId, payload.userId, 'delete')
         page.deletedAt = new Date()
         const saved = await this.pageRepository.save(page)
-        await this.auditService.emit({ type: 'page_delete', summary: page.title, actorUserId: payload.userId, targetType: 'page', targetId: page.pageId })
+        await this.auditService.emit({
+            type: 'page_delete',
+            summary: page.title,
+            actorUserId: payload.userId,
+            targetType: 'page',
+            targetId: page.pageId,
+        })
         return saved
     }
 
@@ -129,8 +188,87 @@ export class PageService {
         page.updatedAt = new Date()
         const saved = await this.pageRepository.save(page)
         await this.enqueueSearchIndex(saved.id, 'page_restored')
-        await this.auditService.emit({ type: 'page_restore', summary: page.title, actorUserId: payload.userId, targetType: 'page', targetId: page.pageId })
+        await this.auditService.emit({
+            type: 'page_restore',
+            summary: page.title,
+            actorUserId: payload.userId,
+            targetType: 'page',
+            targetId: page.pageId,
+        })
         return saved
+    }
+
+    async permanentDelete(payload: { pageId: string; userId: number }) {
+        const { page } = await this.pageAccessService.assertAction(payload.pageId, payload.userId, 'delete', { includeDeleted: true })
+        await this.yjsPostgresqlAdapter.clearDocument(roomNameByPageId(page.pageId))
+        await this.pageRepository.delete({ id: page.id })
+        return { pageId: page.pageId }
+    }
+
+    private async aclRows(pageId: string) {
+        const members = await this.pageAccessService.listMembers(pageId)
+        return members.map(member => ({
+            userId: member.user.id,
+            username: member.user.username,
+            role: member.role,
+            operations: member.operations,
+        }))
+    }
+
+    async getAcl(pageId: string, userId: number) {
+        await this.pageAccessService.assertAction(pageId, userId, 'member_manage')
+        return this.aclRows(pageId)
+    }
+
+    async getAccess(pageId: string, userId: number) {
+        const { member } = await this.pageAccessService.assertAction(pageId, userId, 'read')
+        const can = (action: 'write' | 'share' | 'template_manage' | 'restore') =>
+            this.pageAccessService.canAction(member.role, member.operations ?? [], action)
+        return {
+            role: member.role,
+            canWrite: can('write'),
+            canShare: can('share'),
+            canTemplateManage: can('template_manage'),
+            canRestore: can('restore'),
+        }
+    }
+
+    async updateAcl(pageId: string, userId: number, members: Array<{ userId: number; role: DocRole; operations: DocOperation[] }>) {
+        const { page } = await this.pageAccessService.assertAction(pageId, userId, 'member_manage')
+        if (!members.some(member => member.role === 'owner')) throw new BadRequestException('at least one owner is required')
+        const current = await this.pageAccessService.listMembers(pageId)
+        for (const member of members) await this.pageAccessService.upsertMember(page, member)
+        for (const member of current) {
+            if (!members.some(next => next.userId === member.user.id)) await this.pageAccessService.removeMember(page, member.user.id)
+        }
+        return this.aclRows(pageId)
+    }
+
+    async inviteMember(pageId: string, userId: number, payload: { username: string; role: DocRole; operations: DocOperation[] }) {
+        const { page } = await this.pageAccessService.assertAction(pageId, userId, 'invite_user')
+        const user = await this.pageRepository.manager.getRepository(UserEntity).findOne({ where: { username: payload.username } })
+        if (!user) throw new NotFoundException('user not found')
+        const member = await this.pageAccessService.upsertMember(page, {
+            userId: user.id,
+            role: payload.role,
+            operations: payload.operations,
+        })
+        return { userId: user.id, role: member.role, operations: member.operations }
+    }
+
+    async removeMember(pageId: string, userId: number, targetUserId: number) {
+        const { page } = await this.pageAccessService.assertAction(pageId, userId, 'member_manage')
+        await this.pageAccessService.removeMember(page, targetUserId)
+        return { userId: targetUserId }
+    }
+
+    async listPageTags(pageId: string, userId: number) {
+        await this.pageAccessService.assertAction(pageId, userId, 'read')
+        return this.getPageTags(pageId)
+    }
+
+    async updatePageTags(pageId: string, userId: number, tags: string[]) {
+        return { pageId, tags: await this.setPageTags({ pageId, userId, tagNames: tags }) }
     }
 
     async update(payload: { pageId: string; title?: string; emoji?: string; description?: string; userId: number }) {
@@ -141,7 +279,13 @@ export class PageService {
         page.updatedAt = new Date()
         const saved = await this.pageRepository.save(page)
         await this.enqueueSearchIndex(saved.id, 'title_updated')
-        await this.auditService.emit({ type: 'page_update', summary: saved.title, actorUserId: payload.userId, targetType: 'page', targetId: saved.pageId })
+        await this.auditService.emit({
+            type: 'page_update',
+            summary: saved.title,
+            actorUserId: payload.userId,
+            targetType: 'page',
+            targetId: saved.pageId,
+        })
         return saved
     }
 
@@ -156,7 +300,16 @@ export class PageService {
             const key = normalizeTagKey(name)
             let tag = await this.tagRepository.findOne({ where: { normalizedName: key } })
             if (!tag) {
-                tag = this.tagRepository.create({ tagId: 'tag_' + nanoid(8), name: normalized, normalizedName: key, createdBy: (() => { const u = new UserEntity(); u.id = payload.userId; return u })() })
+                tag = this.tagRepository.create({
+                    tagId: 'tag_' + nanoid(8),
+                    name: normalized,
+                    normalizedName: key,
+                    createdBy: (() => {
+                        const u = new UserEntity()
+                        u.id = payload.userId
+                        return u
+                    })(),
+                })
                 tag = await this.tagRepository.save(tag)
             }
             const pageTag = this.pageTagRepository.create({ page, tag })
@@ -172,9 +325,44 @@ export class PageService {
         return pageTags.map(pt => ({ tagId: pt.tag.tagId, name: pt.tag.name, normalizedName: pt.tag.normalizedName }))
     }
 
-    async getAllTags(userId: number) {
+    async getAllTags() {
         const tags = await this.tagRepository.find({ order: { name: 'ASC' } })
         return tags.map(t => ({ tagId: t.tagId, name: t.name, normalizedName: t.normalizedName }))
+    }
+
+    async listTags() {
+        return this.getAllTags()
+    }
+
+    async createTag(name: string, userId: number) {
+        const normalized = normalizeTagName(name)
+        if (!normalized) throw new BadRequestException('tag name required')
+        const repo = this.tagRepository
+        const existing = await repo.findOne({ where: { normalizedName: normalizeTagKey(name) } })
+        if (existing) return existing
+        const creator = new UserEntity()
+        creator.id = userId
+        return repo.save(
+            repo.create({ tagId: 'tag_' + nanoid(8), name: normalized, normalizedName: normalizeTagKey(name), createdBy: creator })
+        )
+    }
+
+    async updateTag(tagId: string, name: string) {
+        const tag = await this.tagRepository.findOne({ where: { tagId } })
+        if (!tag) throw new NotFoundException('tag not found')
+        tag.name = normalizeTagName(name)
+        tag.normalizedName = normalizeTagKey(name)
+        if (!tag.name) throw new BadRequestException('tag name required')
+        tag.updatedAt = new Date()
+        await this.tagRepository.save(tag)
+        return { tagId: tag.tagId, name: tag.name, normalizedName: tag.normalizedName }
+    }
+
+    async deleteTag(tagId: string) {
+        const tag = await this.tagRepository.findOne({ where: { tagId } })
+        if (!tag) throw new NotFoundException('tag not found')
+        await this.tagRepository.delete({ id: tag.id })
+        return { tagId }
     }
 
     async removePageTag(pageId: string, tagId: string, userId: number) {
@@ -213,7 +401,13 @@ export class PageService {
     async createSnapshot(payload: { pageId: string; userId: number; title?: string }) {
         const { page } = await this.pageAccessService.assertAction(payload.pageId, payload.userId, 'write')
         const snapshot = await this.createSnapshotInternal({ page, createdById: payload.userId, title: payload.title, reason: 'manual' })
-        await this.auditService.emit({ type: 'snapshot_create', summary: page.title, actorUserId: payload.userId, targetType: 'page', targetId: page.pageId })
+        await this.auditService.emit({
+            type: 'snapshot_create',
+            summary: page.title,
+            actorUserId: payload.userId,
+            targetType: 'page',
+            targetId: page.pageId,
+        })
         return {
             snapshotId: snapshot.snapshotId,
             title: snapshot.title,
@@ -231,14 +425,26 @@ export class PageService {
         })
         if (!snapshot) throw new NotFoundException('snapshot not found')
 
-        await this.createSnapshotInternal({ page, createdById: payload.userId, title: page.title + ' (before_restore)', reason: 'before_restore' })
+        await this.createSnapshotInternal({
+            page,
+            createdById: payload.userId,
+            title: page.title + ' (before_restore)',
+            reason: 'before_restore',
+        })
 
         const update = Buffer.from(snapshot.documentUpdate, 'base64')
         const docName = roomNameByPageId(page.pageId)
-        await this.yjsPostgresqlAdapter.setDocumentUpdate(docName, update)
+        await this.yjsPostgresqlAdapter.clearDocument(docName)
+        await this.yjsPostgresqlAdapter.storeUpdate(docName, update)
 
         await this.enqueueSearchIndex(page.id, 'snapshot_restored')
-        await this.auditService.emit({ type: 'snapshot_restore', summary: page.title, actorUserId: payload.userId, targetType: 'page', targetId: page.pageId })
+        await this.auditService.emit({
+            type: 'snapshot_restore',
+            summary: page.title,
+            actorUserId: payload.userId,
+            targetType: 'page',
+            targetId: page.pageId,
+        })
     }
 
     async processPendingSearchJobs(limit: number) {
@@ -260,10 +466,21 @@ export class PageService {
             const xml = ydoc.getXmlFragment(yFragmentNameByPageId(page.pageId)).toJSON()
             const bodyText = typeof xml === 'string' ? stripXmlTags(xml) : ''
             const pageTags = await this.pageTagRepository.find({ where: { page: { id: page.id } }, relations: ['tag'] })
-            const tagsText = pageTags.map(item => item.tag?.name ?? '').filter(Boolean).join(' ')
+            const tagsText = pageTags
+                .map(item => item.tag?.name ?? '')
+                .filter(Boolean)
+                .join(' ')
             const existing = await this.pageSearchIndexRepository.findOne({ where: { page: { id: page.id } }, relations: ['page'] })
-            if (existing) { existing.title = page.title; existing.bodyText = bodyText; existing.tagsText = tagsText; existing.updatedAt = new Date(); await this.pageSearchIndexRepository.save(existing) }
-            else { const index = this.pageSearchIndexRepository.create({ page, title: page.title, bodyText, tagsText, updatedAt: new Date() }); await this.pageSearchIndexRepository.save(index) }
+            if (existing) {
+                existing.title = page.title
+                existing.bodyText = bodyText
+                existing.tagsText = tagsText
+                existing.updatedAt = new Date()
+                await this.pageSearchIndexRepository.save(existing)
+            } else {
+                const index = this.pageSearchIndexRepository.create({ page, title: page.title, bodyText, tagsText, updatedAt: new Date() })
+                await this.pageSearchIndexRepository.save(index)
+            }
             job.processedAt = new Date()
             await this.searchIndexJobRepository.save(job)
         }
@@ -278,17 +495,36 @@ export class PageService {
             .innerJoinAndSelect('idx.page', 'page')
             .innerJoin(PageMemberEntity, 'member', 'member.pageId = page.id AND member.userId = :userId', { userId: payload.userId })
             .where('page.deletedAt IS NULL')
-        if (payload.tagId) { qb.innerJoin(PageTagEntity, 'pageTag', 'pageTag.pageId = page.id').innerJoin(TagEntity, 'tag', 'tag.id = pageTag.tagId AND tag.tagId = :tagId', { tagId: payload.tagId }) }
-        if (payload.cursor) { qb.andWhere('idx.updatedAt < :cursor', { cursor: payload.cursor }) }
+        if (payload.tagId) {
+            qb.innerJoin(PageTagEntity, 'pageTag', 'pageTag.pageId = page.id').innerJoin(
+                TagEntity,
+                'tag',
+                'tag.id = pageTag.tagId AND tag.tagId = :tagId',
+                { tagId: payload.tagId }
+            )
+        }
+        if (payload.cursor) {
+            qb.andWhere('idx.updatedAt < :cursor', { cursor: payload.cursor })
+        }
         if (q) {
-            qb.andWhere(`to_tsvector('simple', coalesce(idx.title,'''') || ' ' || coalesce(idx.bodyText,'''') || ' ' || coalesce(idx.tagsText,'''')) @@ plainto_tsquery('simple', :q)`, { q })
-            qb.addSelect(`ts_rank(to_tsvector('simple', coalesce(idx.title,'''') || ' ' || coalesce(idx.bodyText,'''') || ' ' || coalesce(idx.tagsText,'''')), plainto_tsquery('simple', :q))`, 'rank')
+            qb.andWhere(
+                `to_tsvector('simple', coalesce(idx.title,'''') || ' ' || coalesce(idx.bodyText,'''') || ' ' || coalesce(idx.tagsText,'''')) @@ plainto_tsquery('simple', :q)`,
+                { q }
+            )
+            qb.addSelect(
+                `ts_rank(to_tsvector('simple', coalesce(idx.title,'''') || ' ' || coalesce(idx.bodyText,'''') || ' ' || coalesce(idx.tagsText,'''')), plainto_tsquery('simple', :q))`,
+                'rank'
+            )
             qb.orderBy('rank', 'DESC')
         }
-        qb.addOrderBy('idx.updatedAt', 'DESC').addOrderBy('page.createdAt', 'DESC').take(limit + 1)
+        qb.addOrderBy('idx.updatedAt', 'DESC')
+            .addOrderBy('page.createdAt', 'DESC')
+            .take(limit + 1)
         const rows = await qb.getRawAndEntities()
         const hasNext = rows.entities.length > limit
-        const items = rows.entities.slice(0, limit).map(item => ({ pageId: item.page.pageId, title: item.title, updatedAt: item.updatedAt }))
+        const items = rows.entities
+            .slice(0, limit)
+            .map(item => ({ pageId: item.page.pageId, title: item.title, updatedAt: item.updatedAt }))
         return { items, nextCursor: hasNext ? (items[items.length - 1]?.updatedAt ?? null) : null }
     }
 

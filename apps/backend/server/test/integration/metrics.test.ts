@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { MetricsController } from '../../src/fundamentals/observability/metrics.controller'
 
-describe('MetricsController', () => {
+describe('MetricsController Integration', () => {
     let controller: MetricsController
     let module: TestingModule
 

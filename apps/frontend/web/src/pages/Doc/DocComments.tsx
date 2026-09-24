@@ -8,6 +8,7 @@ import { queryClient } from '@/utils/query-client'
 
 interface DocCommentsProps {
     pageId: string
+    canWrite: boolean
 }
 
 const parseMentionIds = (value: string) =>
@@ -28,7 +29,7 @@ const extractMentionNamesFromContent = (content: string) => {
 }
 
 export function DocComments(props: DocCommentsProps) {
-    const { pageId } = props
+    const { pageId, canWrite } = props
     const [content, setContent] = useState('')
     const [mentionText, setMentionText] = useState('')
     const [anchorText, setAnchorText] = useState('')
@@ -40,6 +41,7 @@ export function DocComments(props: DocCommentsProps) {
     })
     const { data: users = [] } = useQuery({
         queryKey: ['user-list'],
+        enabled: canWrite,
         queryFn: async () => (await srv.listUsers()).data,
     })
 
@@ -71,52 +73,54 @@ export function DocComments(props: DocCommentsProps) {
         <div className="px-4 lg:px-[54px] pb-12">
             <div className="rounded border border-zinc-200 p-4">
                 <h2 className="text-sm font-semibold mb-3">评论与提醒</h2>
-                <div className="space-y-2">
-                    <Input
-                        value={content}
-                        onChange={event => setContent(event.target.value)}
-                        placeholder="输入评论内容，可直接 @username"
-                    />
-                    <Input
-                        value={mentionText}
-                        onChange={event => setMentionText(event.target.value)}
-                        placeholder="补充提及用户名，逗号分隔（如 @demo,@manager）"
-                    />
-                    <Input
-                        value={anchorText}
-                        onChange={event => setAnchorText(event.target.value)}
-                        placeholder='可选锚点 JSON（如 {"blockId":"b1","from":0,"to":12}）'
-                    />
-                    <Button
-                        size="sm"
-                        onClick={async () => {
-                            const normalizedContent = content.trim()
-                            if (!normalizedContent) {
-                                return
-                            }
-                            const mentionNames = Array.from(
-                                new Set([...parseMentionNames(mentionText), ...extractMentionNamesFromContent(normalizedContent)])
-                            )
-                            const mentionUserIdsByName = mentionNames
-                                .map(name => userMap.get(name))
-                                .filter((item): item is number => typeof item === 'number')
-                            const mentionUserIds = Array.from(new Set([...mentionUserIdsByName, ...parseMentionIds(mentionText)]))
+                {canWrite && (
+                    <div className="space-y-2">
+                        <Input
+                            value={content}
+                            onChange={event => setContent(event.target.value)}
+                            placeholder="输入评论内容，可直接 @username"
+                        />
+                        <Input
+                            value={mentionText}
+                            onChange={event => setMentionText(event.target.value)}
+                            placeholder="补充提及用户名，逗号分隔（如 @demo,@manager）"
+                        />
+                        <Input
+                            value={anchorText}
+                            onChange={event => setAnchorText(event.target.value)}
+                            placeholder='可选锚点 JSON（如 {"blockId":"b1","from":0,"to":12}）'
+                        />
+                        <Button
+                            size="sm"
+                            onClick={async () => {
+                                const normalizedContent = content.trim()
+                                if (!normalizedContent) {
+                                    return
+                                }
+                                const mentionNames = Array.from(
+                                    new Set([...parseMentionNames(mentionText), ...extractMentionNamesFromContent(normalizedContent)])
+                                )
+                                const mentionUserIdsByName = mentionNames
+                                    .map(name => userMap.get(name))
+                                    .filter((item): item is number => typeof item === 'number')
+                                const mentionUserIds = Array.from(new Set([...mentionUserIdsByName, ...parseMentionIds(mentionText)]))
 
-                            await srv.createComment(pageId, {
-                                content: normalizedContent,
-                                mentionUserIds,
-                                mentions: mentionNames,
-                                anchor: parseAnchor(),
-                            })
-                            setContent('')
-                            setMentionText('')
-                            setAnchorText('')
-                            await refetchComments()
-                        }}
-                    >
-                        发表评论
-                    </Button>
-                </div>
+                                await srv.createComment(pageId, {
+                                    content: normalizedContent,
+                                    mentionUserIds,
+                                    mentions: mentionNames,
+                                    anchor: parseAnchor(),
+                                })
+                                setContent('')
+                                setMentionText('')
+                                setAnchorText('')
+                                await refetchComments()
+                            }}
+                        >
+                            发表评论
+                        </Button>
+                    </div>
+                )}
 
                 <div className="mt-4 space-y-2">
                     {isLoading && <div className="text-sm text-zinc-500">评论加载中...</div>}
@@ -127,28 +131,30 @@ export function DocComments(props: DocCommentsProps) {
                                     <div className="text-xs text-zinc-500">
                                         {item.author?.username ?? 'unknown'} · {new Date(item.createdAt).toLocaleString()}
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        <Button
-                                            size="sm"
-                                            variant="ghost"
-                                            onClick={async () => {
-                                                await srv.updateComment(item.commentId, { resolved: !item.resolved })
-                                                await refetchComments()
-                                            }}
-                                        >
-                                            {item.resolved ? '取消解决' : '标记解决'}
-                                        </Button>
-                                        <Button
-                                            size="sm"
-                                            variant="ghost"
-                                            onClick={async () => {
-                                                await srv.removeComment(item.commentId)
-                                                await refetchComments()
-                                            }}
-                                        >
-                                            删除
-                                        </Button>
-                                    </div>
+                                    {canWrite && (
+                                        <div className="flex items-center gap-2">
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                onClick={async () => {
+                                                    await srv.updateComment(item.commentId, { resolved: !item.resolved })
+                                                    await refetchComments()
+                                                }}
+                                            >
+                                                {item.resolved ? '取消解决' : '标记解决'}
+                                            </Button>
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                onClick={async () => {
+                                                    await srv.removeComment(item.commentId)
+                                                    await refetchComments()
+                                                }}
+                                            >
+                                                删除
+                                            </Button>
+                                        </div>
+                                    )}
                                 </div>
                                 <p className="text-sm">{item.content}</p>
                                 {item.mentionUserIds.length > 0 && (

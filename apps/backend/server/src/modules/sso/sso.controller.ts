@@ -1,4 +1,4 @@
-﻿import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common'
+﻿import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common'
 import { AuthGuard } from '@nestjs/passport'
 
 import { SsoService } from './sso.service'

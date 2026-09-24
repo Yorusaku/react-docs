@@ -7,7 +7,7 @@
 // 4. 模板/快照恢复链路
 
 test.describe('critical-paths', () => {
-    test('ACL 权限边界：viewer 不能编辑页面标题', async ({ page, browser }) => {
+    test('ACL 权限边界：viewer 不能编辑页面标题', async ({ browser }) => {
         // 创建两个用户上下文
         const ownerCtx = await browser.newContext()
         const viewerCtx = await browser.newContext()

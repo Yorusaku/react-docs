@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, Request, UseGuards, UsePipes } from '@nestjs/common'
+import { Body, Controller, Delete, Get, Param, Post, Put, Request, UseGuards } from '@nestjs/common'
 import { AuthGuard } from '@nestjs/passport'
 import { nanoid } from 'nanoid'
 
@@ -35,8 +35,7 @@ export class PageController {
     }
 
     @Post()
-    @UsePipes(new ZodValidationPipe(createPageSchema))
-    async create(@Body() body: CreatePageDto, @Request() req: { user: { id: number } }) {
+    async create(@Body(new ZodValidationPipe(createPageSchema)) body: CreatePageDto, @Request() req: { user: { id: number } }) {
         const user = new UserEntity()
         user.id = req.user.id
 
@@ -48,8 +47,7 @@ export class PageController {
     }
 
     @Put()
-    @UsePipes(new ZodValidationPipe(updatePageSchema))
-    async update(@Body() body: UpdatePageDto, @Request() req: { user: { id: number } }) {
+    async update(@Body(new ZodValidationPipe(updatePageSchema)) body: UpdatePageDto, @Request() req: { user: { id: number } }) {
         const updated = await this.pageService.update({
             pageId: body.pageId,
             title: body.title,
@@ -77,8 +75,7 @@ export class PageController {
     }
 
     @Delete()
-    @UsePipes(new ZodValidationPipe(deletePageSchema))
-    async delete(@Body() body: DeletePageDto, @Request() req: { user: { id: number } }) {
+    async delete(@Body(new ZodValidationPipe(deletePageSchema)) body: DeletePageDto, @Request() req: { user: { id: number } }) {
         const result = await this.pageService.softDelete({ pageId: body.pageId, userId: req.user.id })
         return { data: result, success: true }
     }
@@ -101,9 +98,18 @@ export class PageController {
         return { data, success: true }
     }
 
+    @Get(':pageId/access')
+    async getAccess(@Param() params: { pageId: string }, @Request() req: { user: { id: number } }) {
+        const data = await this.pageService.getAccess(params.pageId, req.user.id)
+        return { data, success: true }
+    }
+
     @Put(':pageId/acl')
-    @UsePipes(new ZodValidationPipe(updateAclSchema))
-    async updateAcl(@Param() params: { pageId: string }, @Body() body: UpdateAclDto, @Request() req: { user: { id: number } }) {
+    async updateAcl(
+        @Param() params: { pageId: string },
+        @Body(new ZodValidationPipe(updateAclSchema)) body: UpdateAclDto,
+        @Request() req: { user: { id: number } }
+    ) {
         const data = await this.pageService.updateAcl(
             params.pageId,
             req.user.id,
@@ -117,8 +123,11 @@ export class PageController {
     }
 
     @Post(':pageId/members/invite')
-    @UsePipes(new ZodValidationPipe(inviteMemberSchema))
-    async inviteMember(@Param() params: { pageId: string }, @Body() body: InviteMemberDto, @Request() req: { user: { id: number } }) {
+    async inviteMember(
+        @Param() params: { pageId: string },
+        @Body(new ZodValidationPipe(inviteMemberSchema)) body: InviteMemberDto,
+        @Request() req: { user: { id: number } }
+    ) {
         const data = await this.pageService.inviteMember(params.pageId, req.user.id, {
             username: body.username ?? '',
             role: body.role ?? 'viewer',
@@ -140,28 +149,35 @@ export class PageController {
     }
 
     @Put(':pageId/tags')
-    @UsePipes(new ZodValidationPipe(updatePageTagsSchema))
-    async updatePageTags(@Param() params: { pageId: string }, @Body() body: UpdatePageTagsDto, @Request() req: { user: { id: number } }) {
+    async updatePageTags(
+        @Param() params: { pageId: string },
+        @Body(new ZodValidationPipe(updatePageTagsSchema)) body: UpdatePageTagsDto,
+        @Request() req: { user: { id: number } }
+    ) {
         const data = await this.pageService.updatePageTags(params.pageId, req.user.id, body.tags)
         return { data, success: true }
     }
 
     @Get(':pageId/snapshots')
     async listSnapshots(@Param() params: { pageId: string }, @Request() req: { user: { id: number } }) {
-        const data = await this.pageService.listSnapshots(params.pageId, req.user.id)
+        await this.pageService.fetch({ pageId: params.pageId, userId: req.user.id })
+        const data = await this.pageService.listSnapshots(params.pageId)
         return { data, success: true }
     }
 
     @Post(':pageId/snapshots')
-    @UsePipes(new ZodValidationPipe(createSnapshotSchema))
-    async createSnapshot(@Param() params: { pageId: string }, @Body() body: CreateSnapshotDto, @Request() req: { user: { id: number } }) {
-        const data = await this.pageService.createSnapshot(params.pageId, req.user.id, body.title)
+    async createSnapshot(
+        @Param() params: { pageId: string },
+        @Body(new ZodValidationPipe(createSnapshotSchema)) body: CreateSnapshotDto,
+        @Request() req: { user: { id: number } }
+    ) {
+        const data = await this.pageService.createSnapshot({ pageId: params.pageId, userId: req.user.id, title: body.title })
         return { data, success: true }
     }
 
     @Post(':pageId/snapshots/:snapshotId/restore')
     async restoreSnapshot(@Param() params: { pageId: string; snapshotId: string }, @Request() req: { user: { id: number } }) {
-        const data = await this.pageService.restoreSnapshot(params.pageId, params.snapshotId, req.user.id)
+        const data = await this.pageService.restoreSnapshot({ pageId: params.pageId, snapshotId: params.snapshotId, userId: req.user.id })
         return { data, success: true }
     }
 }

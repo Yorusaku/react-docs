@@ -6,16 +6,28 @@ const localStorageMock = (() => {
     let store: Record<string, string> = {}
     return {
         getItem: vi.fn((key: string) => store[key] ?? null),
-        setItem: vi.fn((key: string, value: string) => { store[key] = value }),
-        removeItem: vi.fn((key: string) => { delete store[key] }),
-        clear: vi.fn(() => { store = {} }),
+        setItem: vi.fn((key: string, value: string) => {
+            store[key] = value
+        }),
+        removeItem: vi.fn((key: string) => {
+            delete store[key]
+        }),
+        clear: vi.fn(() => {
+            store = {}
+        }),
     }
 })()
 vi.stubGlobal('localStorage', localStorageMock)
 
 describe('request (P0)', () => {
-    beforeEach(() => { localStorageMock.clear(); locationMock.href = ''; vi.resetModules() })
-    afterEach(() => { vi.restoreAllMocks() })
+    beforeEach(() => {
+        localStorageMock.clear()
+        locationMock.href = ''
+        vi.resetModules()
+    })
+    afterEach(() => {
+        vi.restoreAllMocks()
+    })
 
     describe('getApiMode', () => {
         it('返回 mock 当 VITE_API_MODE=mock', async () => {
@@ -45,7 +57,7 @@ describe('request (P0)', () => {
                 const interceptor = (request.interceptors.response as any).handlers[0]
                 const err = { response: { status: 404 }, config: { url: `/api${prefix}/events` } }
                 await expect(interceptor.rejected(err)).rejects.toMatchObject({
-                    response: { data: { success: false, notImplemented: true, message: expect.stringContaining('未启用') } }
+                    response: { data: { success: false, notImplemented: true, message: expect.stringContaining('未启用') } },
                 })
             })
         })
@@ -70,7 +82,7 @@ describe('request (P0)', () => {
             vi.stubEnv('VITE_API_MODE', 'real')
             const { request } = await import('@/utils/request')
             const interceptor = (request.interceptors.response as any).handlers[0]
-            try { await // eslint-disable-next-line no-empty`n            interceptor.rejected({ response: { status: 401 }, config: {} }) } catch { /* noop */ }
+            await expect(interceptor.rejected({ response: { status: 401 }, config: {} })).rejects.toBeDefined()
             expect(locationMock.href).toBe('/account/login')
         })
     })

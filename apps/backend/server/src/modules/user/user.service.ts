@@ -13,7 +13,7 @@ export class UserService {
     constructor(
         @InjectRepository(UserEntity)
         private readonly userRepository: Repository<UserEntity>,
-        private readonly auditService: AuditService,
+        private readonly auditService: AuditService
     ) {}
 
     async validateUser(username: string, pass: string): Promise<UserEntity | null> {
@@ -34,7 +34,11 @@ export class UserService {
         const saved = await this.userRepository.save(user)
 
         await this.auditService.emit({
-            type: 'register', summary: body.username + ' 注册', actorUserId: saved.id, targetType: 'auth', targetId: String(saved.id),
+            type: 'register',
+            summary: body.username + ' 注册',
+            actorUserId: saved.id,
+            targetType: 'auth',
+            targetId: String(saved.id),
         })
 
         const result = { ...saved }

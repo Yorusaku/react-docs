@@ -33,6 +33,13 @@ interface YjsInstances {
 
 export const Doc = () => {
     const params = useParams()
+    const { data: access } = useQuery({
+        queryKey: ['page-access', params?.id],
+        enabled: !!params?.id,
+        queryFn: async () => (await srv.fetchPageAccess(params.id!)).data,
+        refetchInterval: 5000,
+    })
+    const canWrite = access?.canWrite ?? false
     const { data: page } = useQuery({
         queryKey: ['page', params?.id],
         queryFn: async () => {
@@ -74,13 +81,14 @@ export const Doc = () => {
     }, [page?.pageId, params?.id])
 
     const handleTitleChange = (event: ChangeEvent<HTMLInputElement>) => {
+        if (!canWrite) return
         const value = event.target.value
         setTitleInput(value)
         void updateTitleDebounced(value)
     }
 
     const handleTitleBlur = () => {
-        if (!page?.pageId) {
+        if (!page?.pageId || !canWrite) {
             return
         }
 
@@ -108,11 +116,14 @@ export const Doc = () => {
 
         if (page?.pageId) {
             const doc = new Y.Doc()
-            const roomName = `miaoma-doc-${page.pageId}`
+            // roomname 固定为 'doc-yjs'，Room 名放 query，保证 upgrade pathname 恒为 /doc-yjs。
+            // 由于 roomname 不再区分文档，必须禁用 BroadcastChannel，否则同源多标签会串改不同文档。
+            const documentKey = `miaoma-doc-${page.pageId}`
             const token = localStorage.getItem('token')
-            const provider = new WebsocketProvider(`${wsProtocol}://${wsHost}:${wsPort}/doc-yjs`, roomName, doc, {
+            const provider = new WebsocketProvider(`${wsProtocol}://${wsHost}:${wsPort}`, 'doc-yjs', doc, {
                 connect: false,
-                params: token ? { token } : {},
+                params: { ...(token ? { token } : {}), room: documentKey },
+                disableBc: true,
             })
 
             yjsInstancesRef.current = {
@@ -185,13 +196,20 @@ export const Doc = () => {
                 </div>
                 <div className="flex flex-row items-center gap-4">
                     {remoteUsers.size > 0 && <AvatarList remoteUsers={remoteUsers} />}
-                    {page?.pageId && (
+                    {page?.pageId && access?.canShare && (
                         <Button asChild size="sm" variant="outline">
-                            <Link to={`/doc/${page.pageId}/acl`}>閺夊啴妾?/Link>
+                            <Link to={`/doc/${page.pageId}/acl`}>权限</Link>
                         </Button>
                     )}
-                    <GovernanceDrawer pageId={page?.pageId ?? ""} canWrite={true} canTemplateManage={true} canRestore={true} />
-                    <SharePopover pageId={page?.pageId} />
+                    {access && (
+                        <GovernanceDrawer
+                            pageId={page?.pageId ?? ''}
+                            canWrite={canWrite}
+                            canTemplateManage={access.canTemplateManage}
+                            canRestore={access.canRestore}
+                        />
+                    )}
+                    {access?.canShare && <SharePopover pageId={page?.pageId} />}
                 </div>
             </header>
             <div className="w-[90%] lg:w-[60%] mx-auto">
@@ -199,6 +217,7 @@ export const Doc = () => {
                     <span className="mr-4">{page?.emoji}</span>
                     <input
                         value={titleInput}
+                        readOnly={!canWrite}
                         onChange={handleTitleChange}
                         onBlur={handleTitleBlur}
                         maxLength={255}
@@ -206,15 +225,16 @@ export const Doc = () => {
                         placeholder="Untitled Document"
                     />
                 </h1>
-                {isReady && page?.pageId && yjsInstancesRef.current.doc && yjsInstancesRef.current.provider && (
+                {isReady && access && page?.pageId && yjsInstancesRef.current.doc && yjsInstancesRef.current.provider && (
                     <DocEditor
                         key={page.pageId}
                         pageId={page.pageId}
+                        canWrite={canWrite}
                         doc={yjsInstancesRef.current.doc}
                         provider={yjsInstancesRef.current.provider}
                     />
                 )}
-                {page?.pageId && <DocComments pageId={page.pageId} />}
+                {page?.pageId && access && <DocComments pageId={page.pageId} canWrite={canWrite} />}
             </div>
         </SidebarInset>
     )

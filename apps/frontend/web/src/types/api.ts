@@ -1,12 +1,8 @@
-import { PartialBlock } from '@miaoma-doc/core'
-
 import type { components as MockComponents } from './openapi.generated'
-import type { components as _RealComponents } from './openapi.real.generated'
 import { Page } from './page'
 
 // Mock 契约类型（仅用于 mock 专属场景）
 type MockSchemas = MockComponents['schemas']
-// Real 契约类型（真实业务接口优先引用）
 
 export type CreateUserPayload = MockSchemas['RegisterPayload']
 export type LoginPayload = MockSchemas['LoginPayload']
@@ -85,13 +81,13 @@ export interface SearchPageRes {
     data: { items: SearchPageItem[]; nextCursor: string | null }
 }
 
-export interface AiChatPayload {
-    query: string
-    conversationId?: string
+export interface AiRewritePayload {
+    pageId: string
+    action: 'polish' | 'shorten'
+    text: string
 }
-
-export interface AiChatRes {
-    data: { blocks: PartialBlock[]; conversationId: string }
+export interface AiRewriteRes {
+    data: { text: string }
 }
 
 export interface SsoProvider {

@@ -8,8 +8,9 @@ const envSchema = z.object({
     PG_PASSWORD: z.string().default('xiaoer'),
     PG_DATABASE: z.string().default('postgres'),
     SERVER_PORT: z.coerce.number().int().default(8082),
-    DIFY_API_KEY: z.string().optional(),
-    DIFY_API_BASE_URL: z.string().url().optional(),
+    AI_API_KEY: z.string().optional(),
+    AI_API_BASE_URL: z.string().url().optional(),
+    AI_MODEL: z.string().optional(),
 })
 
 export type ValidatedEnv = z.infer<typeof envSchema>

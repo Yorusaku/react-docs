@@ -8,27 +8,12 @@ import { createReactInlineContentSpec } from '@miaoma-doc/react'
 
 import { MentionContent } from './MentionContent'
 
-interface MentionPropSchema {
-    id: {
-        default: string
-    }
-}
+const mentionConfig = { type: 'mention', propSchema: { id: { default: 'Unknown' } }, content: 'none' } as const
 
 // The Mention inline content.
-export const Mention = createReactInlineContentSpec<MentionPropSchema, StyleSchema>(
-    {
-        type: 'mention',
-        propSchema: {
-            id: {
-                default: 'Unknown',
-            },
-        },
-        content: 'none',
+export const Mention = createReactInlineContentSpec<typeof mentionConfig, StyleSchema>(mentionConfig, {
+    render: props => {
+        const { id } = props.inlineContent.props
+        return <MentionContent pageId={id} />
     },
-    {
-        render: props => {
-            const { id } = props.inlineContent.props
-            return <MentionContent pageId={id} />
-        },
-    }
-)
+})

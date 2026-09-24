@@ -18,7 +18,7 @@ describe('UserService', () => {
             save: vi.fn(),
         }
 
-        const userService = new UserService(userRepository as never)
+        const userService = new UserService(userRepository as never, { emit: vi.fn() } as never)
 
         await expect(userService.validateUser('tester', '123456')).resolves.toEqual(user)
         await expect(userService.validateUser('tester', 'wrong')).resolves.toBeNull()

@@ -12,7 +12,7 @@ export class TasksService {
     constructor(
         private readonly pageService: PageService,
         private readonly governanceService: GovernanceService,
-        private readonly auditService: AuditService,
+        private readonly auditService: AuditService
     ) {}
 
     @Cron('*/30 * * * * *')
@@ -33,7 +33,9 @@ export class TasksService {
             const policy = await this.governanceService.getRetentionPolicy()
             await this.pageService.cleanupExpiredData(policy.snapshotDays, policy.trashDays)
             await this.auditService.cleanupExpired(policy.auditDays)
-            this.logger.log(`[cleanup] expired data cleaned (snapshot=${policy.snapshotDays}d trash=${policy.trashDays}d audit=${policy.auditDays}d)`)
+            this.logger.log(
+                `[cleanup] expired data cleaned (snapshot=${policy.snapshotDays}d trash=${policy.trashDays}d audit=${policy.auditDays}d)`
+            )
         } catch (error) {
             this.logger.error(`[cleanup] failed: ${(error as Error).message}`)
         }

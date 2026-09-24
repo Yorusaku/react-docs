@@ -18,7 +18,7 @@ export class CommentService {
         private readonly userRepository: Repository<UserEntity>,
         private readonly pageAccessService: PageAccessService,
         private readonly notificationService: NotificationService,
-        private readonly auditService: AuditService,
+        private readonly auditService: AuditService
     ) {}
 
     async list(pageId: string, userId: number) {
@@ -29,18 +29,31 @@ export class CommentService {
             relations: ['author', 'parentComment'],
         })
         return comments.map(item => ({
-            commentId: item.commentId, pageId,
+            commentId: item.commentId,
+            pageId,
             author: item.author ? { id: item.author.id, username: item.author.username } : null,
             parentCommentId: item.parentComment?.commentId ?? null,
-            content: item.content, anchor: item.anchor, resolved: item.resolved, hidden: item.hidden,
+            content: item.content,
+            anchor: item.anchor,
+            resolved: item.resolved,
+            hidden: item.hidden,
             mentionUserIds: item.mentionUserIds ?? [],
-            createdAt: item.createdAt, updatedAt: item.updatedAt, deletedAt: item.deletedAt,
+            createdAt: item.createdAt,
+            updatedAt: item.updatedAt,
+            deletedAt: item.deletedAt,
         }))
     }
 
-    async create(pageId: string, userId: number, payload: {
-        content: string; anchor?: Record<string, unknown> | null; parentCommentId?: string; mentionUserIds?: number[]
-    }) {
+    async create(
+        pageId: string,
+        userId: number,
+        payload: {
+            content: string
+            anchor?: Record<string, unknown> | null
+            parentCommentId?: string
+            mentionUserIds?: number[]
+        }
+    ) {
         const { page } = await this.pageAccessService.assertAction(pageId, userId, 'comment')
 
         let parentComment: CommentEntity | null = null
@@ -59,8 +72,11 @@ export class CommentService {
         const invalidIds = mentionUserIdsRaw.filter(id => !validIds.has(id))
         if (invalidIds.length > 0) {
             await this.auditService.emit({
-                type: 'comment_mention_invalid', summary: '评论区提及无效用户', actorUserId: userId,
-                targetType: 'comment', targetId: page.pageId,
+                type: 'comment_mention_invalid',
+                summary: '评论区提及无效用户',
+                actorUserId: userId,
+                targetType: 'comment',
+                targetId: page.pageId,
                 meta: { invalidUserIds: invalidIds, pageId: page.pageId },
             })
         }
@@ -69,22 +85,35 @@ export class CommentService {
         author.id = userId
 
         const comment = this.commentRepository.create({
-            commentId: 'comment' + nanoid(8), page, author, parentComment,
-            content: payload.content.trim(), anchor: payload.anchor ?? null,
+            commentId: 'comment' + nanoid(8),
+            page,
+            author,
+            parentComment,
+            content: payload.content.trim(),
+            anchor: payload.anchor ?? null,
             mentionUserIds: mentionUsers.map(u => u.id),
-            hidden: false, resolved: false, updatedAt: new Date(), deletedAt: null,
+            hidden: false,
+            resolved: false,
+            updatedAt: new Date(),
+            deletedAt: null,
         })
 
         const saved = await this.commentRepository.save(comment)
 
         await this.notificationService.createMentionNotifications({
-            pageId, fromUserId: userId, commentId: saved.commentId,
-            mentionUserIds: saved.mentionUserIds, content: saved.content,
+            pageId,
+            fromUserId: userId,
+            commentId: saved.commentId,
+            mentionUserIds: saved.mentionUserIds,
+            content: saved.content,
         })
 
         await this.auditService.emit({
-            type: 'comment_create', summary: '创建评论', actorUserId: userId,
-            targetType: 'comment', targetId: saved.commentId,
+            type: 'comment_create',
+            summary: '创建评论',
+            actorUserId: userId,
+            targetType: 'comment',
+            targetId: saved.commentId,
             meta: { pageId: page.pageId },
         })
 

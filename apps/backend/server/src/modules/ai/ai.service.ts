@@ -1,10 +1,19 @@
-import { BadGatewayException, HttpException, HttpStatus, Injectable, InternalServerErrorException, Logger } from '@nestjs/common'
+import {
+    BadGatewayException,
+    GatewayTimeoutException,
+    HttpException,
+    HttpStatus,
+    Injectable,
+    ServiceUnavailableException,
+} from '@nestjs/common'
 
-import { AiChatDto } from './ai.dto'
+import { PageAccessService } from '../page/page-access.service'
+import { AiRewriteDto } from './ai.dto'
 
 @Injectable()
 export class AiService {
-    private readonly logger = new Logger(AiService.name)
+    constructor(private readonly pageAccessService: PageAccessService) {}
+
     private readonly windowMs = 60_000
     private readonly maxRequestPerWindow = 20
     private readonly requestWindowByUser = new Map<number, { startAt: number; count: number }>()
@@ -12,67 +21,54 @@ export class AiService {
     private assertRateLimit(userId: number) {
         const now = Date.now()
         const prev = this.requestWindowByUser.get(userId)
-
         if (!prev || now - prev.startAt > this.windowMs) {
             this.requestWindowByUser.set(userId, { startAt: now, count: 1 })
             return
         }
-
-        if (prev.count >= this.maxRequestPerWindow) {
-            throw new HttpException('AI request too frequent, please retry later', HttpStatus.TOO_MANY_REQUESTS)
-        }
-
+        if (prev.count >= this.maxRequestPerWindow) throw new HttpException('AI request too frequent', HttpStatus.TOO_MANY_REQUESTS)
         prev.count += 1
-        this.requestWindowByUser.set(userId, prev)
     }
 
-    async chat(payload: AiChatDto, user: { id: number; username?: string }, ip?: string) {
-        this.assertRateLimit(user.id)
+    async rewrite(payload: AiRewriteDto, userId: number) {
+        await this.pageAccessService.assertAction(payload.pageId, userId, 'write')
+        this.assertRateLimit(userId)
+        const baseUrl = process.env.AI_API_BASE_URL?.replace(/\/$/, '')
+        const apiKey = process.env.AI_API_KEY
+        const model = process.env.AI_MODEL
+        if (!baseUrl || !apiKey || !model) throw new ServiceUnavailableException('AI service is not configured')
 
-        const baseUrl = process.env.DIFY_API_BASE_URL ?? 'https://api.dify.ai'
-        const apiKey = process.env.DIFY_API_KEY
-        if (!apiKey) {
-            throw new InternalServerErrorException('AI service is not configured')
-        }
-
-        this.logger.log(`[AI_AUDIT] userId=${user.id} username=${user.username ?? ''} ip=${ip ?? ''} queryLength=${payload.query.length}`)
-
-        const response = await fetch(`${baseUrl}/v1/chat-messages`, {
-            method: 'POST',
-            headers: {
-                Authorization: `Bearer ${apiKey}`,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                inputs: {},
-                query: payload.query,
-                response_mode: 'blocking',
-                conversation_id: payload.conversationId ?? '',
-                user: String(user.id),
-            }),
-        })
-
-        if (!response.ok) {
-            const text = await response.text()
-            this.logger.error(`[AI_ERROR] status=${response.status} body=${text}`)
-            throw new BadGatewayException('AI upstream request failed')
-        }
-
-        const data = (await response.json()) as { answer?: string; conversation_id?: string }
-
+        const instruction =
+            payload.action === 'polish'
+                ? '润色以下文字，使表达清晰自然，保留原意。只输出改写后的文字。'
+                : '精简以下文字，保留主要意思。只输出改写后的文字。'
+        let response: Response
         try {
-            const blocks = JSON.parse(data.answer ?? '[]')
-            if (!Array.isArray(blocks)) {
-                throw new Error('blocks must be array')
-            }
-
-            return {
-                blocks,
-                conversationId: data.conversation_id ?? '',
-            }
+            response = await fetch(`${baseUrl}/chat/completions`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    model,
+                    stream: false,
+                    messages: [
+                        { role: 'system', content: instruction },
+                        { role: 'user', content: payload.text },
+                    ],
+                }),
+                signal: AbortSignal.timeout(20000),
+            })
         } catch (error) {
-            this.logger.error(`[AI_PARSE_ERROR] ${(error as Error).message}`)
+            if (['TimeoutError', 'AbortError'].includes((error as Error).name)) throw new GatewayTimeoutException('AI request timed out')
+            throw new BadGatewayException('AI upstream unavailable')
+        }
+        if (!response.ok) throw new BadGatewayException('AI upstream request failed')
+        let data: { choices?: Array<{ message?: { content?: unknown } }> }
+        try {
+            data = await response.json()
+        } catch {
             throw new BadGatewayException('AI response format invalid')
         }
+        const text = data.choices?.[0]?.message?.content
+        if (typeof text !== 'string' || !text.trim() || text.length > 8000) throw new BadGatewayException('AI response format invalid')
+        return { text: text.trim() }
     }
 }

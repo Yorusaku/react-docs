@@ -1,4 +1,4 @@
-﻿import type { InternalAxiosRequestConfig } from 'axios'
+﻿import { AxiosHeaders, type InternalAxiosRequestConfig } from 'axios'
 
 import type { DocOperation, DocRole, NotificationItem, SnapshotItem, TagItem, TemplateItem } from '@/types/api'
 
@@ -610,12 +610,14 @@ const matchPath = (path: string, pattern: string): Record<string, string> | null
 
 const resolveToken = (config: InternalAxiosRequestConfig) => {
     const headers = config.headers
-    const authRaw =
+    const authRaw = String(
         typeof headers?.get === 'function'
             ? headers.get('Authorization')
             : ((headers?.Authorization as string | undefined) ??
-              (headers?.authorization as string | undefined) ??
-              (headers?.AUTHORIZATION as string | undefined))
+                  (headers?.authorization as string | undefined) ??
+                  (headers?.AUTHORIZATION as string | undefined) ??
+                  '')
+    )
     if (!authRaw || !authRaw.startsWith('Bearer ')) {
         return null
     }
@@ -993,7 +995,7 @@ const handleProtectedRoutes = (method: HttpMethod, path: string, query: URLSearc
     if (method === 'POST' && path === '/auth/logout') {
         const token = resolveToken({
             ...({} as InternalAxiosRequestConfig),
-            headers: { Authorization: `Bearer ${Object.keys(db.sessions).find(k => db.sessions[k] === user.id) ?? ''}` },
+            headers: new AxiosHeaders({ Authorization: `Bearer ${Object.keys(db.sessions).find(k => db.sessions[k] === user.id) ?? ''}` }),
         })
         if (token) {
             delete db.sessions[token]
@@ -1125,6 +1127,22 @@ const handleProtectedRoutes = (method: HttpMethod, path: string, query: URLSearc
         const { page } = assertAction(pageDetailParams.pageId, user.id, 'read')
         db.metrics.collaborationConnections = Math.max(1, db.metrics.collaborationConnections)
         return { data: buildPageListItem(page), success: true }
+    }
+
+    const accessParams = matchPath(path, '/page/:pageId/access')
+    if (accessParams && method === 'GET') {
+        const { member } = assertAction(accessParams.pageId, user.id, 'read')
+        const can = (action: DocAction) => hasAction(member.role, member.operations, action)
+        return {
+            data: {
+                role: member.role,
+                canWrite: can('write'),
+                canShare: can('share'),
+                canTemplateManage: can('template_manage'),
+                canRestore: can('restore'),
+            },
+            success: true,
+        }
     }
 
     const restoreParams = matchPath(path, '/page/:pageId/restore')
@@ -1883,30 +1901,15 @@ const handleProtectedRoutes = (method: HttpMethod, path: string, query: URLSearc
         }
     }
 
-    if (method === 'POST' && path === '/ai/chat') {
+    if (method === 'POST' && path === '/ai/rewrite') {
         assertRateLimit(user.id)
-        const queryText = String(body.query ?? '').trim()
-        if (!queryText) {
-            throw new MockHttpError(400, 'query is required')
-        }
-        addAuditEvent({
-            type: 'ai_chat',
-            actorUserId: user.id,
-            targetType: 'ai',
-            targetId: null,
-            summary: '瑙﹀彂 AI 瀵硅瘽',
-            meta: { queryLength: queryText.length },
-        })
+        const pageId = String(body.pageId ?? '')
+        assertAction(pageId, user.id, 'write')
+        const text = String(body.text ?? '').trim()
+        const action = String(body.action ?? '')
+        if (!text || text.length > 4000 || !['polish', 'shorten'].includes(action)) throw new MockHttpError(400, 'invalid rewrite request')
         return {
-            data: {
-                blocks: [
-                    {
-                        type: 'paragraph',
-                        content: `銆怣ock AI銆戝凡鏍规嵁浣犵殑闂鐢熸垚鑽夌锛?{queryText}`,
-                    },
-                ],
-                conversationId: String(body.conversationId ?? '') || `conv-${randomId('')}`,
-            },
+            data: { text: action === 'polish' ? `润色：${text}` : text.slice(0, Math.max(1, Math.ceil(text.length / 2))) },
             success: true,
         }
     }

@@ -9,7 +9,6 @@ import {
     defaultBlockSpecs,
     defaultInlineContentSpecs,
     filterSuggestionItems,
-    insertOrUpdateBlock,
     locales,
     MiaomaDocEditor,
     MiaomaDocSchema,
@@ -18,16 +17,13 @@ import {
 import { DefaultReactSuggestionItem, getDefaultReactSlashMenuItems, SuggestionMenuController, useCreateMiaomaDoc } from '@miaoma-doc/react'
 import { MiaomaDocView } from '@miaoma-doc/shadcn'
 import { useQuery } from '@tanstack/react-query'
-import { Sparkles } from 'lucide-react'
-import PubSub from 'pubsub-js'
 import { useCallback, useEffect, useMemo } from 'react'
 // import { yXmlFragmentToProseMirrorFragment, yXmlFragmentToProseMirrorRootNode } from 'y-prosemirror'
 import { WebsocketProvider } from 'y-websocket'
 import * as Y from 'yjs'
 
-import { AI } from '@/blocks/ai'
 import { Mention } from '@/blocks/mention'
-import { BasicAIChat } from '@/components/BasicAIChat'
+import { SelectionRewrite } from '@/components/SelectionRewrite'
 import * as srv from '@/services'
 import { User } from '@/types/api'
 
@@ -35,6 +31,7 @@ import { cursorRender } from './cursorRender'
 
 interface DocEditorProps {
     pageId: string
+    canWrite: boolean
     initialContent?: PartialBlock[]
     doc: Y.Doc
     provider: WebsocketProvider
@@ -47,7 +44,6 @@ const schema = MiaomaDocSchema.create({
     },
     blockSpecs: {
         ...defaultBlockSpecs,
-        ai: AI,
     },
 })
 
@@ -84,24 +80,8 @@ const getMentionMenuItems = async (editor: MiaomaDocEditor, pageId?: string): Pr
     return items
 }
 
-// Slash menu item to insert an Alert block
-const insertAI = (editor: typeof schema.MiaomaDocEditor) => ({
-    title: 'MiaoMa AI',
-    subtext: '妙码 AI，让进取的人更具职业价值',
-    onItemClick: () => {
-        const aiAnchorBlock = insertOrUpdateBlock(editor, {
-            type: 'paragraph',
-        })
-        const { id: aiAnchorBlockId } = aiAnchorBlock
-
-        PubSub.publishSync('ai-inserted', aiAnchorBlockId)
-    },
-    aliases: ['alert', 'notification', 'emphasize', 'warning', 'error', 'info', 'success'],
-    icon: <Sparkles color="#6B45FF" size={18} />,
-})
-
 export function DocEditor(props: DocEditorProps) {
-    const { pageId, doc, provider } = props
+    const { pageId, doc, provider, canWrite } = props
 
     const { data: currentUser } = useQuery<User>({
         queryKey: ['currentUser'],
@@ -122,14 +102,14 @@ export function DocEditor(props: DocEditorProps) {
 
     const getMentionItems = useCallback(
         async (query: string) => {
-            const items = await getMentionMenuItems(editor, pageId)
+            const items = await getMentionMenuItems(editor as unknown as MiaomaDocEditor, pageId)
             return filterSuggestionItems(items, query)
         },
         [pageId]
     )
 
     const getSlashItems = useCallback(async (query: string) => {
-        return filterSuggestionItems([insertAI(editor), ...getDefaultReactSlashMenuItems(editor)], query)
+        return filterSuggestionItems(getDefaultReactSlashMenuItems(editor as unknown as MiaomaDocEditor), query)
     }, [])
 
     const editor = useCreateMiaomaDoc(
@@ -157,11 +137,10 @@ export function DocEditor(props: DocEditorProps) {
     }, [])
 
     return (
-        <MiaomaDocView editor={editor} theme="light" slashMenu={false}>
+        <MiaomaDocView editor={editor} theme="light" slashMenu={false} editable={canWrite}>
             <SuggestionMenuController triggerCharacter="@" getItems={getMentionItems} />
             <SuggestionMenuController triggerCharacter="/" getItems={getSlashItems} />
-            {/* @ts-expect-error editor schema type fix */}
-            <BasicAIChat editor={editor} />
+            {canWrite && <SelectionRewrite editor={editor} pageId={pageId} />}
         </MiaomaDocView>
     )
 }

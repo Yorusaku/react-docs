@@ -2,7 +2,7 @@ import { Body, Controller, Post, Req, UseGuards, UsePipes } from '@nestjs/common
 import { AuthGuard } from '@nestjs/passport'
 
 import { ZodValidationPipe } from '../../pipes/zod-validation.pipe'
-import { AiChatDto, aiChatSchema } from './ai.dto'
+import { AiRewriteDto, aiRewriteSchema } from './ai.dto'
 import { AiService } from './ai.service'
 
 @Controller('ai')
@@ -10,10 +10,10 @@ import { AiService } from './ai.service'
 export class AiController {
     constructor(private readonly aiService: AiService) {}
 
-    @Post('chat')
-    @UsePipes(new ZodValidationPipe(aiChatSchema))
-    async chat(@Body() body: AiChatDto, @Req() req: { user: { id: number; username?: string }; ip?: string }) {
-        const data = await this.aiService.chat(body, req.user, req.ip)
+    @Post('rewrite')
+    @UsePipes(new ZodValidationPipe(aiRewriteSchema))
+    async rewrite(@Body() body: AiRewriteDto, @Req() req: { user: { id: number } }) {
+        const data = await this.aiService.rewrite(body, req.user.id)
         return { data, success: true }
     }
 }

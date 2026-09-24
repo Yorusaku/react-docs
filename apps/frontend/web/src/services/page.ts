@@ -13,6 +13,12 @@ export const fetchPageDetail = async (pageId: string) => {
     return await request.get(`/page/${pageId}`)
 }
 
+export const fetchPageAccess = async (
+    pageId: string
+): Promise<{ data: { role: string; canWrite: boolean; canShare: boolean; canTemplateManage: boolean; canRestore: boolean } }> => {
+    return await request.get(`/page/${pageId}/access`)
+}
+
 export const removePage = async (pageId: string) => {
     return await request.delete('/page', { data: { pageId } })
 }

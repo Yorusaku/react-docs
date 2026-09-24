@@ -1,11 +1,11 @@
-import { join } from 'node:path'
-
 import { Test, TestingModule } from '@nestjs/testing'
 import { TypeOrmModule } from '@nestjs/typeorm'
 import { nanoid } from 'nanoid'
 import { DataSource, Repository } from 'typeorm'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
+import { AuditEventEntity } from '../../src/entities/audit-event.entity'
+import { GovernanceRetentionPolicyEntity } from '../../src/entities/governance-retention-policy.entity'
 import { PageEntity } from '../../src/entities/page.entity'
 import { PageMemberEntity } from '../../src/entities/page-member.entity'
 import { PageSearchIndexEntity } from '../../src/entities/page-search-index.entity'
@@ -14,8 +14,12 @@ import { PageTagEntity } from '../../src/entities/page-tag.entity'
 import { SearchIndexJobEntity } from '../../src/entities/search-index-job.entity'
 import { TagEntity } from '../../src/entities/tag.entity'
 import { UserEntity } from '../../src/entities/user.entity'
+import { AuditService } from '../../src/modules/audit/audit.service'
+import { GovernanceService } from '../../src/modules/governance/governance.service'
 import { PageService } from '../../src/modules/page/page.service'
 import { PageAccessService } from '../../src/modules/page/page-access.service'
+import { createMockYjsAdapter } from './support/mock-yjs-adapter'
+import { integrationTypeOrmOptions, resetIntegrationTables } from './support/test-database'
 
 describe('Search Index Integration', () => {
     let module: TestingModule
@@ -25,33 +29,12 @@ describe('Search Index Integration', () => {
     let searchJobRepo: Repository<SearchIndexJobEntity>
     let searchIndexRepo: Repository<PageSearchIndexEntity>
 
-    const mockYjsAdapter = {
-        getYDoc: async () => ({
-            getXmlFragment: () => ({ toJSON: () => '<doc><p>hello world</p></doc>' }),
-        }),
-        clearDocument: async () => {},
-        setDocumentUpdate: async () => {},
-    }
-
-    const testDb = process.env.PG_DATABASE_TEST ?? 'miaoma_test'
-    const pgHost = process.env.PG_HOST ?? 'localhost'
-    const pgPort = Number(process.env.PG_PORT ?? 5432)
-    const pgUser = process.env.PG_USER ?? 'postgres'
-    const pgPassword = process.env.PG_PASSWORD ?? 'postgres'
+    const mockYjsAdapter = createMockYjsAdapter('<doc><p>hello world</p></doc>')
 
     beforeAll(async () => {
         module = await Test.createTestingModule({
             imports: [
-                TypeOrmModule.forRoot({
-                    type: 'postgres',
-                    host: pgHost,
-                    port: pgPort,
-                    username: pgUser,
-                    password: pgPassword,
-                    database: testDb,
-                    entities: [join(__dirname, '../../src', '**/**.entity{.ts,.js}')],
-                    synchronize: true,
-                }),
+                TypeOrmModule.forRoot(integrationTypeOrmOptions()),
                 TypeOrmModule.forFeature([
                     PageEntity,
                     PageMemberEntity,
@@ -60,9 +43,17 @@ describe('Search Index Integration', () => {
                     PageTagEntity,
                     SearchIndexJobEntity,
                     PageSearchIndexEntity,
+                    GovernanceRetentionPolicyEntity,
+                    AuditEventEntity,
                 ]),
             ],
-            providers: [PageService, PageAccessService, { provide: 'YJS_POSTGRESQL_ADAPTER', useValue: mockYjsAdapter }],
+            providers: [
+                PageService,
+                PageAccessService,
+                GovernanceService,
+                AuditService,
+                { provide: 'YJS_POSTGRESQL_ADAPTER', useValue: mockYjsAdapter },
+            ],
         }).compile()
 
         ds = module.get(DataSource)
@@ -70,6 +61,17 @@ describe('Search Index Integration', () => {
         userRepo = ds.getRepository(UserEntity)
         searchJobRepo = ds.getRepository(SearchIndexJobEntity)
         searchIndexRepo = ds.getRepository(PageSearchIndexEntity)
+        await resetIntegrationTables(ds, [
+            'page_member',
+            'search_index_job',
+            'page_search_index',
+            'page_snapshot',
+            'page_tag',
+            'page',
+            'audit_event',
+            'user',
+            'governance_retention_policy',
+        ])
     })
 
     afterAll(async () => {

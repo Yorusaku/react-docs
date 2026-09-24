@@ -1,41 +1,29 @@
-﻿import { join } from 'node:path'
-
 import { Test, TestingModule } from '@nestjs/testing'
 import { TypeOrmModule } from '@nestjs/typeorm'
 import { DataSource } from 'typeorm'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
+import { GovernanceRetentionPolicyEntity } from '../../src/entities/governance-retention-policy.entity'
 import { GovernanceService } from '../../src/modules/governance/governance.service'
+import { integrationTypeOrmOptions, resetIntegrationTables } from './support/test-database'
 
-describe('GovernanceService (RED)', () => {
+describe('GovernanceService Integration', () => {
     let module: TestingModule
-    let ds: DataSource
     let governanceService: GovernanceService
-
-    const testDb = process.env.PG_DATABASE_TEST ?? 'miaoma_test'
-    const pgHost = process.env.PG_HOST ?? 'localhost'
-    const pgPort = Number(process.env.PG_PORT ?? 5432)
-    const pgUser = process.env.PG_USER ?? 'postgres'
-    const pgPassword = process.env.PG_PASSWORD ?? 'postgres'
 
     beforeAll(async () => {
         module = await Test.createTestingModule({
-            imports: [
-                TypeOrmModule.forRoot({
-                    type: 'postgres', host: pgHost, port: pgPort, username: pgUser,
-                    password: pgPassword, database: testDb,
-                    entities: [join(__dirname, '../../src', '**/**.entity{.ts,.js}')],
-                    synchronize: true,
-                }),
-            ],
+            imports: [TypeOrmModule.forRoot(integrationTypeOrmOptions()), TypeOrmModule.forFeature([GovernanceRetentionPolicyEntity])],
             providers: [GovernanceService],
         }).compile()
 
-        ds = module.get(DataSource)
         governanceService = module.get(GovernanceService)
+        await resetIntegrationTables(module.get(DataSource), ['governance_retention_policy'])
     })
 
-    afterAll(async () => { await module?.close() })
+    afterAll(async () => {
+        await module?.close()
+    })
 
     describe('getRetentionPolicy', () => {
         it('首次调用返回默认值 {snapshotDays:30, trashDays:30, auditDays:90}', async () => {
@@ -49,7 +37,9 @@ describe('GovernanceService (RED)', () => {
     describe('updateRetentionPolicy', () => {
         it('更新并返回新值', async () => {
             const updated = await governanceService.updateRetentionPolicy({
-                snapshotDays: 60, trashDays: 60, auditDays: 180,
+                snapshotDays: 60,
+                trashDays: 60,
+                auditDays: 180,
             })
             expect(updated.snapshotDays).toBe(60)
             expect(updated.trashDays).toBe(60)
